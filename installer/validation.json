@@ -33,5 +33,13 @@
       "new_clip_samples_per_version": 1
     }
   },
-  "documentation_scope": "Documentation preview. Private infrastructure targets and evidence paths omitted; payload digest and acceptance results unchanged."
+  "documentation_scope": "Documentation preview. Private infrastructure targets and evidence paths omitted; payload digest and acceptance results unchanged.",
+  "script_acceptance": {
+    "entrypoints": "macOS .command --help / menu start-exit and Windows CMD menu start-exit passed using prepared runtime and existing administrator session",
+    "camera_install_via_cli": "not_tested",
+    "camera_uninstall_via_cli": "not_tested",
+    "shared_core_tests": "host unit/integration tests only; not equivalent to CLI-on-camera end-to-end acceptance",
+    "camera_acceptance_path": "GUI installation and GUI uninstallation; separate read-only operator diagnostics do not count as CLI installation/uninstallation",
+    "next_device_acceptance": "From released scripts ZIP: CLI uninstall -> managed residual audit -> CLI fresh install -> default service health -> actual new-video FTP and SD receipt confirmation"
+  }
 }
