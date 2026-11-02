@@ -1,0 +1,37 @@
+{
+  "installer_version": "0.1.0-preview.12",
+  "package_revision": "preview.12",
+  "payload_version": "0.4.1-installer.7-preview",
+  "payload_sha256": "d53e18b37f16667110bcbd9556c6bc19ed51c5858ac2f7e090f2ba8870986896",
+  "payload_files": 22,
+  "channel": "preview",
+  "supported_model": "ILCE-7C",
+  "supported_firmware": "2.00",
+  "build_date": "2026-11-03",
+  "unit_tests": {
+    "macOS": 87,
+    "Windows": 86
+  },
+  "unit_test_skips": {
+    "Windows": "1 POSIX launcher test; executed on macOS"
+  },
+  "worker_tests": {
+    "macOS": 112,
+    "result": "passed; host C/shell/FTP integration; no camera I/O"
+  },
+  "native_start_tests": 1,
+  "camera_runtime_acceptance": {
+    "status": "GUI uninstall / 28-path audit / clean-session fresh install / default upload-and-display health / new-video FTP publication and SD receipts passed",
+    "auto_start_scope": "Passed via fresh GUI install itself, no standalone start action",
+    "new_upload": "C0250 29368033 bytes, SD U6501CAA.RCP; C0251 109071463 bytes, SD U834976A.RCP; FTP size proof, display cleanup rc0; 11 completed commits with receipts in captured run (8 STOR, 3 existing-remote reuse)",
+    "timing": {
+      "backlog_prepare_mean_before": 9.688,
+      "backlog_prepare_mean_after": 7.663,
+      "after_intervals": 9,
+      "new_clip_selection_to_copy_before": 6.47,
+      "new_clip_selection_to_copy_after": 6.27,
+      "new_clip_samples_per_version": 1
+    }
+  },
+  "documentation_scope": "Documentation preview. Private infrastructure targets and evidence paths omitted; payload digest and acceptance results unchanged."
+}
