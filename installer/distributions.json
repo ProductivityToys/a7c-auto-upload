@@ -1,0 +1,49 @@
+{
+  "package_revision": "preview.23",
+  "installer_version": "0.1.0-preview.23",
+  "payload_version": "0.4.1-installer.14-preview",
+  "build_date": "2026-11-03",
+  "repository": "https://github.com/ProductivityToys/a7c-auto-upload",
+  "release_url": "https://github.com/ProductivityToys/a7c-auto-upload/releases/tag/v0.1.0-preview.23",
+  "visibility": "private",
+  "packages": {
+    "a7c-installer-0.1.0-preview.23-scripts.zip": {
+      "bytes": 3950935,
+      "sha256": "95b7d48f1b59e9d2ec592679d751e7dc40e599e654d97659971d1d260493974f"
+    },
+    "a7c-installer-0.1.0-preview.23-macos-arm64.dmg": {
+      "bytes": 40366080,
+      "sha256": "43c911338af8173caaff6c17f36bb7ddc883a179ea99c1a42c3468358df0ee9b"
+    },
+    "a7c-installer-0.1.0-preview.23-windows-x64.zip": {
+      "bytes": 46875890,
+      "sha256": "b1d99100c96a85fdb40e3327992f5c8f8d740c8fb9d312205fe41009244edf9e"
+    }
+  },
+  "payload_sha256": "73da5682aefd1379a51f7f788d078d861f6a97ffed6aa31a4ddea5132da5a047",
+  "unit_tests": {
+    "macOS": "100 passed",
+    "Windows": "99 passed;1 POSIX test skipped and executed on Mac"
+  },
+  "entry_verification": {
+    "Mac DMG": "read-only mount, two visible entries, signature, offline selfcheck and six guide byte comparisons passed; operator mounted with existing sudo authorization",
+    "Mac scripts": "ZIP CRC and execute bits, actual .command menu start/exit and start.sh --help in path with spaces passed; prepared shared runtime and existing sudo environment; no USB actions",
+    "Windows EXE": "passed: final ZIP extracted, Chinese filename, offline selfcheck",
+    "Windows CMD": "passed: actual CMD launcher, menu startup and exit in path with spaces",
+    "Windows entry scope": "Existing administrator SSH token and prepared shared Python runtime; no UAC/first-dependency-download/camera/driver changes in this entry test"
+  },
+  "tested_firmware": "ILCE-7C2.00; other versions untested",
+  "camera_acceptance": "macOS and Windows CLI uninstall, clean install/default start; Windows driver install/restore; C0258 actual20978709-byte upload, SD UF786A6A.RCP and display cleanup passed. Frozen .22 GUI connected, installed status, FTP result and disconnect passed. No new camera actions in .23 packaging.",
+  "code_comparison": {
+    "baseline": "device-tested preview.22",
+    "files_checked": 56,
+    "changed_executable_source": [
+      "a7c_installer/__init__.py"
+    ],
+    "scope": "Version string only; .14 payload bytes unchanged"
+  },
+  "signature": {
+    "macOS": "ad-hoc; not notarized",
+    "Windows": "unsigned preview"
+  }
+}

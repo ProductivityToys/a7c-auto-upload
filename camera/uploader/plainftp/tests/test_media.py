@@ -1,0 +1,86 @@
+"""Real C local gates compared to existing Python parsers and damaged inputs."""
+import hashlib,pathlib,subprocess,tempfile,unittest,sys
+SRC=pathlib.Path(__file__).resolve().parents[1]
+RECEIVER=SRC.parents[2]/'nas/receiver'
+sys.path.insert(0,str(RECEIVER))
+from media import metadata
+class MediaTests(unittest.TestCase):
+ @classmethod
+ def setUpClass(cls):
+  cls.build=tempfile.TemporaryDirectory();cls.bin=pathlib.Path(cls.build.name)/'media'
+  subprocess.run(['cc','-O2','-Wall','-Wextra','-Werror',str(SRC/'media.c'),'-o',str(cls.bin)],check=True)
+  cls.xml=(RECEIVER/'tests/metadata.xml').read_bytes();cls.status=(RECEIVER/'tests/status.txt').read_bytes()
+ @classmethod
+ def tearDownClass(cls):cls.build.cleanup()
+ def call(self,action,data,last='24'):
+  with tempfile.TemporaryDirectory() as t:
+   f=pathlib.Path(t)/'data';f.write_bytes(data)
+   args=[action,str(f),last] if action=='identity' else [action,'B',str(f)]
+   return subprocess.run([str(self.bin),*args],capture_output=True,timeout=3)
+ def test_identity_matches_original_store_and_64bit_size(self):
+  m=metadata(self.xml)
+  for size in (24,2**32+1,274877906944):
+   p=self.call('identity',self.xml,str(size));self.assertEqual(p.returncode,0,p.stderr)
+   expected=hashlib.sha256(f"{m['umid']}:{size}:{m['xml_sha256']}".encode()).hexdigest()
+   self.assertEqual(p.stdout.decode().strip(),expected)
+ def test_xml_failure_cases(self):
+  cases=[self.xml[:-40],self.xml.replace(b'</NonRealTimeMeta>',b'</Wrong>'),self.xml.replace(b'status="end"',b'status="increment"'),self.xml.replace(b'frameCount="71"',b'frameCount="72"'),self.xml.replace(b'ILCE-7C',b'ILCE-7M3'),self.xml.replace(b'<TargetMaterial umidRef=',b'<TargetMaterial value='),self.xml.replace(b'<Duration value="72"/>',b'<Duration value="72"/><Duration value="72"/>'),self.xml.replace(b'<Duration ',b'<Duration xmlns="foreign" '),self.xml.replace(b'<Duration ',b'<Duration value="1" '),self.xml.replace(b'<Duration ',b'<Duration x="&fake;" '),b'<!DOCTYPE x>'+self.xml,self.xml+b'<other/>']
+  for data in cases:
+   with self.subTest(prefix=data[:40]):self.assertNotEqual(self.call('identity',data).returncode,0)
+ def row_key(self,row):
+  return subprocess.run([str(self.bin),'row-identity',row],capture_output=True,timeout=3)
+ def test_directory_identity_uses_only_video_name_length_and_timestamp(self):
+  row='C0224.MP4 50342873 C0224M01.XML 2176 2026-10-22T17:00:00 2026-10-22T17:00:00'
+  p=self.row_key(row);self.assertEqual(p.returncode,0,p.stderr)
+  self.assertEqual(p.stdout.decode().strip(),hashlib.sha256(b'a7c-file-v1:C0224.MP4:50342873:2026-10-22T17:00:00').hexdigest())
+  for changed in [row.replace('50342873','50342874'),row.replace('C0224.MP4','C0225.MP4'),row.replace('T17:00:00','T17:00:01',1)]:
+   self.assertNotEqual(self.row_key(changed).stdout,p.stdout)
+  self.assertEqual(self.row_key(row.replace('2176','3333').rsplit(' ',1)[0]+' 2026-11-01T01:02:03').stdout,p.stdout)
+ def test_directory_identity_rejects_malformed_or_extra_fields(self):
+  row='C0224.MP4 50342873 C0224M01.XML 2176 2026-10-22T17:00:00 2026-10-22T17:00:00'
+  for bad in ['',row+' extra',row.replace('50342873','-1'),row.replace('50342873','0'),row.replace('C0224.MP4','../x.MP4'),row.replace('2026-10-22T17:00:00','bad',1)]:
+   self.assertNotEqual(self.row_key(bad).returncode,0,bad)
+ def test_directory_strictness(self):
+  p=self.call('dir',self.status);self.assertEqual(p.returncode,0);self.assertIn(b'C0193.MP4 24 C0193M01.XML 2174',p.stdout)
+  for data in (self.status.replace(b'C0193M01.XML',b'C0194M01.XML'),self.status.replace(b'[IFSYS]a----- 24',b'[IFSYS]a----- -24'),self.status.replace(b'C0193.MP4',b'../bad.MP4'),self.status.replace(b'[IFSYS]a----- 2174',b'[IFSYS]a----- 20000')):
+   self.assertNotEqual(self.call('dir',data).returncode,0)
+ def test_newest_uses_timestamps_across_filename_wrap_and_stable_ties(self):
+  rows=[]
+  for number,stamp in [(9999,'2026-10-20 11:00:00'),(1,'2026-10-21 12:00:00'),(2,'2026-10-21 12:00:00')]:
+   rows.extend([f'[IFSYS]a----- 24 {stamp} C{number:04d}.MP4',f'[IFSYS]a----- 2174 {stamp} C{number:04d}M01.XML'])
+  data=('IFSYS dir B:/PRIVATE/M4ROOT/CLIP\r\n'+'\n'.join(rows)+'\nMWF>').encode()
+  newest=self.call('newest',data);self.assertEqual(newest.returncode,0,newest.stderr)
+  self.assertEqual([s.split()[0] for s in newest.stdout.decode().splitlines()],['C0002.MP4','C0001.MP4','C9999.MP4'])
+  # Existing dir output remains canonical name order for legacy consumers.
+  self.assertEqual([s.split()[0] for s in self.call('dir',data).stdout.decode().splitlines()],['C0001.MP4','C0002.MP4','C9999.MP4'])
+ def test_newest_rejects_incomplete_and_duplicate_rows_before_output(self):
+  for data in (self.status.replace(b'C0193M01.XML',b'C0194M01.XML'),self.status[:self.status.index(b'MWF>IFSYS info')]):
+   p=self.call('newest',data);self.assertNotEqual(p.returncode,0);self.assertEqual(p.stdout,b'')
+ def test_open_video_writer_blocks(self):
+  self.assertEqual(self.call('info',self.status).returncode,0)
+  changed=self.status.replace(b'D:\\PRIVATE\\M4ROOT\\MEDIAPRO.XML',b'D:\\PRIVATE\\M4ROOT\\CLIP\\C0193.MP4')
+  self.assertNotEqual(self.call('info',changed).returncode,0)
+  self.assertNotEqual(self.call('info',self.status.replace(b'/dev/mmca',b'/dev/unknown')).returncode,0)
+ def test_card_identity_change_invalidates_signature(self):
+  a=self.call('info',self.status);b=self.call('info',self.status.replace(b'39 01 C3 00 F5 4D 80 38',b'38 01 C3 00 F5 4D 80 38'))
+  self.assertEqual(a.returncode,0);self.assertEqual(b.returncode,0);self.assertNotEqual(a.stdout,b.stdout)
+ def test_missing_native_completion_rejected(self):
+  for action,marker in [('dir',b'MWF>IFSYS info'),('info',b'MWF>')]:
+   data=self.status[:self.status.rfind(marker)]
+   self.assertNotEqual(self.call(action,data).returncode,0)
+ def root_exists(self,rows,target='UABC123A.RCP'):
+  with tempfile.TemporaryDirectory() as temp:
+   source=pathlib.Path(temp)/'root'
+   source.write_text('IFSYS dir B:/\r\n'+'\r\n'.join(rows)+'\r\nMWF>')
+   return subprocess.run([str(self.bin),'exists','B',target,str(source)],capture_output=True,timeout=3).returncode
+ def test_root_long_directory_names_do_not_block_receipts(self):
+  rows=['[IFSYS]-d-sh- 131072 2026-10-27 18:46:05 System Volume Information',
+        '[IFSYS]-d---- 131072 2026-10-27 18:46:05 相机资料 备份',
+        '[IFSYS]-d--h- 131072 2026-10-27 07:35:57 .fseventsd']
+  self.assertEqual(self.root_exists(rows),10)
+  receipt='[IFSYS]a----- 512 2026-10-27 18:46:05 UABC123A.RCP'
+  self.assertEqual(self.root_exists(rows+[receipt]),0)
+  self.assertEqual(self.root_exists(rows+[receipt,receipt]),90)
+  self.assertEqual(self.root_exists(rows+[receipt.replace('512','513')]),90)
+  self.assertEqual(self.root_exists(rows+[receipt+' extra']),10)
+if __name__=='__main__':unittest.main()

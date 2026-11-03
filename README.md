@@ -1,7 +1,5 @@
 # A7C Auto Upload
 
-> 文档预览：安装包稍后上传至 Releases。
-
 给第一代 Sony A7C 补上 **Wi-Fi 视频自动上传**。
 
 录完视频，相机通过家中 Wi-Fi 自动上传到普通 FTP 服务器，屏幕上显示上传进度。
@@ -37,7 +35,7 @@ GUI 自带运行环境，不需要安装 Python。
 
 ## For AI / 给 AI 看
 
-**推荐使用 CLI。** 脚本的实机安装、卸载尚未验收。把下面这段复制给你的 AI 助手：
+**推荐使用 CLI。** macOS、Windows 的实机安装和卸载已验证。把下面这段复制给你的 AI 助手：
 
 ```text
 请帮我安装并配置 A7C Auto Upload。

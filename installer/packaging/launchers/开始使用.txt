@@ -1,0 +1,12 @@
+A7C 自动上传 · 脚本版
+
+Mac：双击「开始使用.command」。
+Windows：双击「开始使用.cmd」，按系统提示允许管理员运行。
+Linux／终端：运行 sh start.sh。
+
+启动后按数字选择操作，无需编辑脚本或手工拼命令。
+首次需要 Python 3.11+ 和网络，用于安装依赖。
+app 目录保存程序及说明，请完整保留。
+
+高级用户可用 sh start.sh detect 等命令；Windows对应 app\install.ps1。
+密码只在隐藏输入中填写，不要写进命令行。

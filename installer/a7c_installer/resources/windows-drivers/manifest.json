@@ -1,0 +1,13 @@
+{
+  "libwdi": "1.5.1",
+  "libusb-win32": "1.4.0.2",
+  "architecture": "x64",
+  "binaries": {
+    "libwdi.dll": "c7f5c838bdb22bcece22c7cd2b00ff6dab1ed4299c47cf70479ae9a0b1dc6504"
+  },
+  "sources": {
+    "libusb-win32-1.4.0.2.zip": "00004c92cdb99be36e17fb2377165eb97e63b48ba895bfc04a642ea9c3e26d94",
+    "libwdi-1.5.1-source.zip": "746547aaf927cae44c75512d763941805928427f4ba4df3dbb40c3f7f561821e",
+    "libusb-win32-1.4.0.2-source.zip": "9508e8c63950dcbe589748a6b2662962edb46535bcd3eaeb4974a83c6c6b3a85"
+  }
+}

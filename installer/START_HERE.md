@@ -1,10 +1,10 @@
 # 从这里开始：A7C 自动上传试用
 
 这是供熟悉设备恢复的用户试用的预览版，不是索尼官方软件，也不是固件更新器。
-仅适配 **第一代 ILCE-7C、机身固件 2.00**；A7C II、A7CR 和 2.03 不在本包支持范围。
-安装与撤销的具体步骤见[恢复与卸载](RECOVERY.md)。
+已验证 **第一代 ILCE-7C、机身固件 2.00**；其他固件未测试，能否安装以安装器检测结果为准。A7C II、A7CR 不在本项目适配范围。
+安装与卸载步骤见本文，回退方法见[恢复与卸载](RECOVERY.md)。
 
-本说明对应 `0.1.0-preview.12` / 相机载荷 `0.4.1-installer.7-preview`。
+本说明对应 `0.1.0-preview.23` / 相机载荷 `0.4.1-installer.14-preview`。
 旧 `preview.11` 下载包保持原样，使用本批新包及摘要。验收范围见同包 `validation.json`。
 
 先点「连接相机」，macOS 按系统提示授权后自动继续。连接成功后填写 FTP 并安装；
@@ -21,7 +21,7 @@
 | 电脑 | 选择 | 已测范围 |
 | --- | --- | --- |
 | Apple Silicon Mac | `*-macos-arm64.dmg` | macOS 27.0.1；不提供 Intel Mac 原生包 |
-| Windows x64 | `*-windows-x64.zip` | Windows 11 build 26200；构建、界面及离线自检通过，完整 USB 安装未验收 |
+| Windows x64 | `*-windows-x64.zip` | Windows 11 build 26200；CLI实机卸载、驱动恢复、全新安装及默认启动通过；新视频上传及SD回执通过 |
 | 使用命令行 | `*-scripts.zip` | 需要 Python 3.11+；首次安装依赖需联网 |
 
 macOS：打开DMG，将「A7C 自动上传.app」拖入「应用程序」，推出DMG后从应用程序打开。
@@ -34,12 +34,12 @@ Windows：完整解压后直接双击根目录「A7C 自动上传.exe」，保�
 
 ```sh
 # macOS
-shasum -a 256 a7c-installer-0.1.0-preview.12-macos-arm64.dmg
+shasum -a 256 a7c-installer-0.1.0-preview.23-macos-arm64.dmg
 ```
 
 ```powershell
 # Windows PowerShell
-Get-FileHash .\a7c-installer-0.1.0-preview.12-windows-x64.zip -Algorithm SHA256
+Get-FileHash .\a7c-installer-0.1.0-preview.23-windows-x64.zip -Algorithm SHA256
 ```
 
 结果应与发送者通过可信渠道提供的 `SHA256SUMS` 对应行相同。摘要能检查文件变化，不替代发布者签名。
@@ -83,7 +83,7 @@ App会请求管理员权限。从「更多」选择“准备 Windows 驱动”�
 更换驱动后资源管理器可能无法读取相机卷；需要恢复时点击“恢复普通 USB 导入”。
 卸载相机服务默认勾选联动恢复电脑驱动；原本手工安装的驱动只复用，不自动删除。
 若驱动被系统签名策略/组织策略阻止，保留提示并反馈，不关闭系统保护。
-驱动自动化已完成离线验证，真实相机的普通/服务模式安装与恢复仍需要独立验收，详见[恢复说明](RECOVERY.md#windows驱动恢复)。
+Windows11已实测普通/服务接口自动安装和恢复；普通接口变化会核对同一相机后自动接续，详见[恢复说明](RECOVERY.md#windows驱动恢复)。
 
 ## 4. 安装
 
