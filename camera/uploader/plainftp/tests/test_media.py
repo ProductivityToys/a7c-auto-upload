@@ -127,4 +127,19 @@ class MediaTests(unittest.TestCase):
   self.assertEqual(self.root_exists(rows+[receipt,receipt]),90)
   self.assertEqual(self.root_exists(rows+[receipt.replace('512','513')]),90)
   self.assertEqual(self.root_exists(rows+[receipt+' extra']),10)
+ def test_interleaved_native_console_noise_is_retryable_never_absent(self):
+  # Observed on the camera 2026-11-05: an asynchronous MWF message split a row.
+  receipt='[IFSYS]a----- 512 2026-10-27 18:46:05 UABC123A.RCP'
+  other='[IFSYS]a----- 512 2026-11-03 11:03:26 UDA75F6A.RCP'
+  split=['[IFSYS]a----- 512 2026-11-03 11:03:26 UDA75F6MWF]  [RsrcAcsr] already Acquired!',':A.RCP']
+  self.assertEqual(self.root_exists([receipt,other]),0)
+  self.assertEqual(self.root_exists([other]),10)
+  self.assertEqual(self.root_exists([receipt]+split),75)
+  self.assertEqual(self.root_exists(split),75)        # could have hidden our receipt
+  self.assertEqual(self.root_exists(['[IFSYS]garbage']),75)
+  self.assertEqual(self.root_exists(['[MWF]  [RsrcAcsr] Not acquired!']),75)
+  with tempfile.TemporaryDirectory() as temp:
+   truncated=pathlib.Path(temp)/'root';truncated.write_text('IFSYS dir B:/\r\n'+receipt)
+   self.assertEqual(subprocess.run([str(self.bin),'exists','B','UABC123A.RCP',str(truncated)],timeout=3).returncode,75)
+   self.assertEqual(subprocess.run([str(self.bin),'exists','B','UABC123A.RCP',str(truncated)+'.missing'],timeout=3).returncode,75)
 if __name__=='__main__':unittest.main()

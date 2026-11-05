@@ -13,15 +13,19 @@ case "$1:$2" in
  *) exec "$@";;
 esac
 ''');bb.chmod(0o700)
-   (d/'return').write_text(str(code)+'\n');exe=d/'discovery';exe.write_text('''#!/bin/sh
+   (d/'return').write_text(''.join(str(c)+'\n' for c in (code if isinstance(code,list) else [code])));exe=d/'discovery';exe.write_text('''#!/bin/sh
 echo "$*" >> "$TEST_RAM/calls"
 cat "$TEST_RAM/return" | while read code; do exit "$code"; done
 ''');exe.chmod(0o700)
    exe.write_text(exe.read_text().replace('cat "$TEST_RAM/return"', '''read now rest < "$TEST_RAM/uptime"
 echo "$(( ${now%.*} + $3 )).0 200.0" > "$TEST_RAM/uptime"
-cat "$TEST_RAM/return"'''))
+n=$(cat "$TEST_RAM/n" 2>/dev/null); n=$((${n:-0}+1)); echo "$n" > "$TEST_RAM/n"
+total=$(wc -l < "$TEST_RAM/return"); [ "$n" -le "$total" ] || n=$total
+sed -n "${n}p" "$TEST_RAM/return"'''))
    funcs='';source=(SRC/'worker.sh').read_text()
-   for name in ['cache_invalidate','discovery_wait']:
+   runtime=(SRC.parent/'worker.sh').read_text()
+   funcs+=re.search(r'^uptime_seconds\(\) \{\n.*?^}\n',runtime,re.M|re.S)[0]
+   for name in ['cache_invalidate','quiet_interval','discovery_wait']:
     funcs+=re.search(r'^'+name+r'\(\) \{\n.*?^}\n',source,re.M|re.S)[0]
    funcs=funcs.replace('/proc/uptime',str(d/'uptime'))
    script=f'D={d}\nB={bb}\nexport TEST_RAM="$D"\n'+funcs+'''
@@ -48,6 +52,7 @@ printf 'old known row\n' > "$D/plain.known"
 [ "$(cat "$D/plain.known")" = 'old known row' ] || exit 4
 ''',code)
  def test_failed_hint_disables_it_until_worker_restart_and_uses_original_polling(self):
+  # Transport/memory failures (not layout) still disable the hint for this session.
   self.run_shell('''discovery_wait || exit 1
 [ "$DISCOVERY_OFF" = 1 ] && [ "$(cat "$D/plain.checked")" = 'old verified row' ] || exit 2
 echo again > "$D/plain.checked"
@@ -55,7 +60,7 @@ discovery_wait || exit 3
 [ "$(wc -l < "$D/calls" | xargs)" = 1 ] || exit 4
 [ "$(cat "$D/sleeps" | tr '\\n' ' ')" = '2 2 ' ] || exit 5
 [ "$(cat "$D/plain.checked")" = again ] || exit 6
-''',95)
+''',72)
  def test_retry_uses_bounded_hint_waits_instead_of_uninterruptible_long_sleep(self):
   self.run_shell('''for delay in 0 1 20 40 600; do discovery_wait || exit 1; done
 [ "$(wc -l < "$D/calls" | xargs)" = 23 ] || exit 2
@@ -91,4 +96,52 @@ rm "$D/discovery"
 discovery_wait || exit 3
 [ "$(cat "$D/sleeps")" = 2 ] || exit 4
 ''',20)
+ def test_unknown_layout_retries_in_video_mode_and_logs_once(self):
+  self.run_shell('''PHOTOS=0; DISCOVERY_OFF=0
+discovery_wait && discovery_wait || exit 1
+[ "$DISCOVERY_OFF" = 0 ] && [ "$DISCOVERY_RETRYING" = 1 ] || exit 2
+[ "$(grep -c DISCOVERY_RETRY "$D/events")" = 1 ] || exit 3
+[ "$(cat "$D/sleeps" | tr '\\n' ' ')" = '2 2 ' ] || exit 4
+discovery_wait || exit 5
+[ "$DISCOVERY_RETRYING" = 0 ] && grep -q DISCOVERY_RESUMED "$D/events" || exit 6
+[ "$(tail -1 "$D/calls")" = '162 wait 30 0' ] || exit 7
+''',[95,95,0])
+ def test_consecutive_quiet_fallbacks_space_out_native_queries(self):
+  for photos,cap_slices in [(0,4),(1,2)]:
+   with self.subTest(photos=photos):
+    self.run_shell(f'''PHOTOS={photos}
+i=0; while [ "$i" -lt 10 ]; do discovery_wait || exit 1; i=$((i+1)); done
+# 4x30s, 4x60s (2 slices), then the cap: 2 x {cap_slices} slices.
+[ "$(wc -l < "$D/calls" | xargs)" = $((4+8+2*{cap_slices})) ] || exit 2
+[ "$QUIET_STREAK" = 10 ] || exit 3
+[ "$CONTINUITY_LIMIT" = $(({cap_slices}*30+15)) ] || exit 4
+[ ! -f "$D/sleeps" ] || exit 5
+''')
+ def test_activity_resets_quiet_backoff_and_opens_short_settle_window(self):
+  self.run_shell('''QUIET_STREAK=9
+discovery_wait || exit 1
+[ "$(cat "$D/calls")" = '162 wait 30 0' ] || exit 2
+[ "$QUIET_STREAK" = 0 ] && [ "$SETTLE_UNTIL" = 170 ] || exit 3
+echo 0 > "$D/return"; rm "$D/n"
+discovery_wait || exit 4
+[ "$(tail -1 "$D/calls")" = '162 wait 2 0' ] || exit 5
+i=0; while [ "$i" -lt 20 ]; do discovery_wait || exit 6; i=$((i+1)); done
+# 40s settle window of 2s re-checks, then the ordinary 30s quiet wait again.
+[ "$(grep -c 'wait 2 0' "$D/calls")" = 20 ] || exit 7
+[ "$(tail -1 "$D/calls")" = '162 wait 30 0' ] && [ "$SETTLE_UNTIL" = 0 ] || exit 8
+[ "$CONTINUITY_LIMIT" = 45 ] || exit 9
+''',10)
+ def test_ongoing_recording_does_not_open_settle_window(self):
+  self.run_shell('''discovery_wait || exit 1
+[ "$SETTLE_UNTIL" = 0 ] || exit 2
+echo 0 > "$D/return"; rm "$D/n"
+discovery_wait || exit 3
+[ "$(tail -1 "$D/calls")" = '162 wait 30 0' ] || exit 4
+''',11)
+ def test_activity_ends_a_long_quiet_wait_early(self):
+  self.run_shell('''QUIET_STREAK=9
+discovery_wait || exit 1
+[ "$(wc -l < "$D/calls" | xargs)" = 2 ] || exit 2
+[ "$QUIET_STREAK" = 0 ] || exit 3
+''',[0,10])
 if __name__=='__main__':unittest.main()

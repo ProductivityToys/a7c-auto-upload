@@ -103,6 +103,9 @@ class BundleTests(unittest.TestCase):
     def test_frozen_package(self):
         bundle = Bundle()
         self.assertEqual(len(bundle.files), 22)
+        # The Wi-Fi diagnostics are a maintainer debug add-on, never shipped.
+        self.assertFalse(any(p.startswith('/setting/a7c-diag/') for p in bundle.files))
+        self.assertNotIn('wifi-diag', bundle.manifest['features'])
         self.assertEqual(len(bundle.firmware["dependencies"]), 9)
         self.assertFalse(any("debug/" in p or "password" in p for p in bundle.files))
 
@@ -450,7 +453,7 @@ class TerminalTests(unittest.TestCase):
         for state in ('FOREIGN','BUSY'):
             with self.subTest(state=state):
                 camera = SonyUsb()
-                with patch.object(camera, 'resident_status', return_value=state), patch.object(camera, 'command') as command, patch('a7c_installer.transport.sony_usb.time.monotonic', side_effect=[0,31]):
+                with patch.object(camera, 'resident_status', return_value=state), patch.object(camera, 'command') as command, patch('a7c_installer.transport.sony_usb.time.monotonic', side_effect=[0,61]):
                     with self.assertRaises(InstallerError):
                         camera.start_service()
                 command.assert_not_called()

@@ -80,6 +80,8 @@ esac
                 (d / name).chmod(0o700)
             source = (SRC / 'worker.sh').read_text()
             functions = source[source.index('timed() {'):source.index('receipt_load() {')]
+            runtime = (SRC.parent / 'worker.sh').read_text()
+            functions = runtime[runtime.index('wait_child() {'):runtime.index('scan_hold_stop() {')] + functions
             functions = functions.replace('/proc/uptime', str(d / 'uptime'))
             functions = functions.replace('/sys/class/udc/dwc3.0/current_speed', str(d / 'usb-state'))
             script = f'''D={shlex.quote(str(d))}
@@ -180,7 +182,25 @@ source_checked
 if source_same; then exit 99; fi
 [ -z "$SNAPSHOT_AT" ]
 ''')
-        self.assertEqual(files['native-calls'].splitlines(), ['filesystem', 'recording'])
+        # Recorder and card info run concurrently; a failed recorder check still
+        # denies the transfer even though the info query also ran.
+        calls = files['native-calls'].splitlines()
+        self.assertEqual(calls[0], 'filesystem')
+        self.assertEqual(sorted(calls[1:]), ['info', 'recording'])
+
+    def test_pre_copy_recorder_and_info_checks_run_concurrently(self):
+        files = self.run_shell('''
+media_poll
+SOURCE_ROW=$(cat "$D/plain.entries"); SOURCE_CARD=$CARD; DRIVE=$LETTER
+recording_idle() { echo recording-start >> "$D/native-calls"; sleep 1; echo recording-end >> "$D/native-calls"; }
+cp "$D/monitor" "$D/monitor.real"
+printf '#!/bin/sh\n[ "$1" != info ] || { echo info-start >> "$TEST_RAM/native-calls"; sleep 1; echo info-end >> "$TEST_RAM/native-calls"; }\nexec "$TEST_RAM/monitor.real" "$@"\n' > "$D/monitor"
+source_same
+''')
+        calls = files['native-calls'].splitlines()
+        # Both started before either finished.
+        self.assertLess(max(calls.index('recording-start'), calls.index('info-start')),
+                        min(calls.index('recording-end'), calls.index('info-end')))
 
     def test_initial_bind_rejects_open_clip_before_directory_read(self):
         files = self.run_shell(r'''
@@ -395,6 +415,28 @@ if source_same; then exit 99; fi
                    self.sample.replace('ms=1234', 'ms=wrong ms=1234'),
                    self.sample.rsplit('line=3', 1)[0],
                    self.sample + 'unexpected\n', self.sample + 'unterminated']
+        for sample in samples:
+            with self.subTest(sample=sample):
+                files = self.run_shell(self.sample_setup(sample) + 'receipt_recording_idle\n')
+                self.assertEqual(files['native-calls'].splitlines(), ['sample', 'recording'])
+
+    still = """A7C_RECORDER_SAMPLE_V1 pid=4242 ms=1234
+line=0 active=1 index=0 type=1 state=1 count1=0 count2=0
+line=1 active=0 index=0 type=0 state=0 count1=0 count2=0
+line=2 active=0 index=0 type=0 state=0 count1=0 count2=0
+line=3 active=0 index=0 type=0 state=0 count1=0 count2=0
+"""
+
+    def test_photo_standby_sample_authorizes_receipt_fast_path(self):
+        files = self.run_shell(self.sample_setup(self.still) + 'receipt_recording_idle\n')
+        self.assertEqual(files['native-calls'].splitlines(), ['sample'])
+
+    def test_busy_or_mixed_photo_sample_falls_back_to_complete_query(self):
+        samples = [self.still.replace('state=1', 'state=3', 1),
+                   self.still.replace('count1=0', 'count1=1', 1),
+                   self.still.replace('count2=0', 'count2=2', 1),
+                   self.still.replace('line=1 active=0 index=0 type=0', 'line=1 active=1 index=1 type=256', 1),
+                   self.still.replace('type=1 ', 'type=2 ', 1)]
         for sample in samples:
             with self.subTest(sample=sample):
                 files = self.run_shell(self.sample_setup(sample) + 'receipt_recording_idle\n')

@@ -1,5 +1,6 @@
 #!/bin/ash
-# Installer-owned startup. Upload and native indicator only; no Wi-Fi debugger.
+# Installer-owned startup. Upload, native indicator and, only when paired,
+# the read-only Wi-Fi diagnostics listener; no research debugger.
 B=/bin/busybox
 P=/setting/a7c-uploader
 D=$P/ram
@@ -21,6 +22,11 @@ if [ -f /setting/a7c-display/enabled ]; then
  ram_mount a7c-debug-ram "$G" 1024k || exit 90
 fi
 cd / || exit 90
+# Opt-in diagnostics: independent of upload pause/stop, one per boot (its own
+# RAM lock), never started without an installer-written pairing.
+if [ -f /setting/a7c-diag/enabled ] && [ -f /setting/a7c-diag/start.sh ]; then
+ ( exec /bin/ash /setting/a7c-diag/start.sh </dev/null >/dev/null 2>&1 ) &
+fi
 $B mkdir "$D/supervisor.lock" || exit 90
 [ "$1" != --start ] || $B rm -f "$D/stop" "$D/worker.exit"
 echo "$$" > "$D/supervisor.pid"
@@ -31,7 +37,7 @@ while [ "$attempt" -lt 3 ] && [ -f "$P/enabled" ] && [ ! -f "$D/stop" ]; do
  echo "$worker" > "$D/worker.pid"
  wait "$worker"; rc=$?
  echo "$rc" > "$D/worker.exit"
- case "$rc" in 42|90) break;; esac
+ case "$rc" in 42|90|91) break;; esac
  [ ! -e "$D/source.fifo" ] && [ ! -e "$D/lock" ] || break
  $B sleep 60
 done

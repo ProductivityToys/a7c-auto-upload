@@ -15,6 +15,13 @@ PRELOAD = "/etc/ld.so.preload"
 LOADER = P + "/launcher.so"
 ENABLE = P + "/enabled"
 DISPLAY_ENABLE = S + "/enabled"
+DIAG = "/setting/a7c-diag"
+DIAG_ENABLE = DIAG + "/enabled"
+DIAG_TOKEN = DIAG + "/token"
+# Maintainer debug add-on (not in release payloads). Tolerated in an installed
+# manifest so a debug-equipped camera is not rejected as unknown; uninstall
+# removes it together with the pairing.
+DIAG_FILES = {DIAG + "/listener", DIAG + "/listener.sha256", DIAG + "/diag.sh", DIAG + "/start.sh"}
 PENDING = STATE + "/pending.json"
 BACKUP = STATE + "/backup"
 STARTED_MESSAGE = "上传服务已启动。请拔掉 USB 并回到拍摄画面，连接 Wi-Fi 后自动上传，无需关机或取电池。"
@@ -86,7 +93,8 @@ class Installer:
                   "supported": version == self.bundle.firmware["version_txt"],
                   "installed_version": metadata.get("version") if metadata else None,
                   "enabled": self.camera.exists(ENABLE),
-                  "pending_recovery": self.camera.exists(PENDING), "ftp": public}
+                  "pending_recovery": self.camera.exists(PENDING), "ftp": public,
+                  "wifi_diag": self.camera.exists(DIAG_ENABLE) and self.camera.exists(DIAG_TOKEN)}
         report['health'] = (self.camera.service_health() if metadata and report['enabled'] and not report['pending_recovery']
                             else {'state':'stopped','detail':'上传服务未运行'})
         if full:
@@ -114,7 +122,7 @@ class Installer:
                 raise ValueError()
             managed = value["files"]
             required = {LOADER, P + "/worker.sh", P + "/supervisor.sh"}
-            if not isinstance(managed, dict) or not required <= set(managed) <= set(self.bundle.files):
+            if not isinstance(managed, dict) or not required <= set(managed) <= set(self.bundle.files) | DIAG_FILES:
                 raise ValueError()
             if any(not isinstance(h, str) or len(h) != 64 or any(c not in "0123456789abcdef" for c in h) for h in managed.values()):
                 raise ValueError()
@@ -151,11 +159,11 @@ class Installer:
             raise InstallerError("研究版无线调试自启仍开启；请先通过原维护工具停用，再安装发布版。")
 
     def paths(self):
-        return sorted(set(self.bundle.files) | {CONFIG, PASSWORD, META, ENABLE, DISPLAY_ENABLE, PRELOAD})
+        return sorted(set(self.bundle.files) | {CONFIG, PASSWORD, META, ENABLE, DISPLAY_ENABLE, PRELOAD, DIAG_ENABLE, DIAG_TOKEN} | DIAG_FILES)
 
     def prepare_directories(self):
         self.camera.directories([STATE, BACKUP, P, P + "/plainftp", P + "/ram", S,
-                                 "/setting/a7c-debug", "/setting/a7c-debug/ram"])
+                                 "/setting/a7c-debug", "/setting/a7c-debug/ram", DIAG])
 
     def snapshot(self, operation="install"):
         rows = []
@@ -260,6 +268,34 @@ class Installer:
         return {'started': True, 'version': self.bundle.version, 'service_started': True,
                 'processes': processes, 'health':processes['health'], 'requires_power_cycle': False, 'message': STARTED_MESSAGE}
 
+    def diag_enable(self, token):
+        """Pair the read-only Wi-Fi diagnostics with a host-generated key."""
+        if not isinstance(token, str) or len(token) != 64 or any(c not in "0123456789abcdef" for c in token):
+            raise InstallerError("诊断配对密钥格式不正确。")
+        if 'wifi-diag' not in self.bundle.manifest.get('features', []):
+            raise InstallerError("当前相机载荷不含无线诊断。")
+        report = self.inspect()
+        if report['pending_recovery']:
+            raise InstallerError('上次操作未完成，请先恢复。')
+        meta = self.metadata(self.camera.read(META)) if self.camera.exists(META) else None
+        if not meta or meta['version'] != self.bundle.version or DIAG + "/listener" not in meta['files']:
+            raise InstallerError('请先安装或更新到含无线诊断的当前版本。')
+        self.camera.diag_stop()
+        self.camera.atomic(DIAG_TOKEN, (token + "\n").encode())
+        self.camera.atomic(DIAG_ENABLE, b"a7c-diag-v1\n")
+        self.camera.sync()
+        pid = self.camera.diag_start() if report['enabled'] else None
+        self.log("无线诊断已配对" + ("，监听已启动" if pid else "；将随上传服务下次启动"))
+        return {"wifi_diag": True, "listener_pid": pid}
+
+    def diag_disable(self):
+        self.camera.remove(DIAG_ENABLE)
+        self.camera.remove(DIAG_TOKEN)
+        self.camera.sync()
+        self.camera.diag_stop()
+        self.log("无线诊断已关闭，配对密钥已从相机删除")
+        return {"wifi_diag": False}
+
     def restore(self):
         self.verify_firmware()
         raw = optional(self.camera, BACKUP + "/manifest.json")
@@ -315,7 +351,7 @@ class Installer:
         self.prepare_directories()
         self.snapshot("uninstall")
         self.stop()
-        for path in set(installed['files']) | {CONFIG, PASSWORD, META, ENABLE, DISPLAY_ENABLE}:
+        for path in set(installed['files']) | {CONFIG, PASSWORD, META, ENABLE, DISPLAY_ENABLE, DIAG_ENABLE, DIAG_TOKEN} | DIAG_FILES:
             self.camera.remove(path)
         self.camera.sync()
         self.camera.remove(PENDING)

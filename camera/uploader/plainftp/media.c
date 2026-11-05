@@ -189,20 +189,25 @@ static int order_rows(const char *path){
  }
  return 0;
 }
+/* 0 present, 10 absent, 90 owned-name conflict, 75 listing unreadable.
+ * The native frontend can interleave asynchronous console messages (e.g.
+ * "[MWF]  [RsrcAcsr] already Acquired!") into a row. Such a transcript proves
+ * neither presence nor absence: report it as retryable, never as absent. */
 static int exists(const char*drive,const char*filename,const char*path){
- if(strlen(drive)!=1||load(path,buf,sizeof(buf)-1)<0)return 90;
- char marker[40];snprintf(marker,sizeof(marker),"IFSYS dir %s:/",drive);char*p=frame(marker);if(!p)return 90;int found=0;
+ if(strlen(drive)!=1)return 90;
+ if(load(path,buf,sizeof(buf)-1)<0)return 75;
+ char marker[40];snprintf(marker,sizeof(marker),"IFSYS dir %s:/",drive);char*p=frame(marker);if(!p)return 75;int found=0;
  for(char*line=p;line&&*line;){char*next=strchr(line,'\n');if(next)*next++=0;
   if(!strncmp(line,"[IFSYS]",7)){char attr[7],size[32],date[11],clock[9];int end=0;u64 bytes;
-   if(sscanf(line,"[IFSYS]%6s %31s %10s %8s %n",attr,size,date,clock,&end)!=4||!end||strlen(attr)!=6||!dec(size,&bytes))return 90;
+   if(sscanf(line,"[IFSYS]%6s %31s %10s %8s %n",attr,size,date,clock,&end)!=4||!end||strlen(attr)!=6||!dec(size,&bytes))return 75;
    /* FAT long names, including Windows' System Volume Information, are the
     * entire remainder of the row. Only compare the exact owned 8.3 receipt;
     * unrelated directory names may contain spaces or UTF-8 characters. */
    char*file=line+end;unsigned length=strlen(file);
    while(length&&(file[length-1]==' '||file[length-1]=='\t'))file[--length]=0;
-   if(!length||length>1024)return 90;
+   if(!length||length>1024)return 75;
    if(!strcmp(file,filename)){if(found++)return 90;if(attr[0]!='a'||bytes>512)return 90;}
-  }else {for(char*q=line;*q;q++)if(*q!=' '&&*q!='\t')return 90;}line=next;
+  }else {for(char*q=line;*q;q++)if(*q!=' '&&*q!='\t')return 75;}line=next;
  }return found?0:10;
 }
 int main(int argc,char**v){(void)millis;if(argc==3&&!strcmp(v[1],"row-identity"))return row_identity(v[2]);if(argc==3&&!strcmp(v[1],"order"))return order_rows(v[2]);if(argc==5&&!strcmp(v[1],"exists"))return exists(v[2],v[3],v[4]);if(argc==4&&!strcmp(v[1],"dir"))return directory(v[2],v[3],0);if(argc==4&&!strcmp(v[1],"newest"))return directory(v[2],v[3],1);if(argc==4&&!strcmp(v[1],"photos"))return photo_directory(v[2],v[3]);if(argc==4&&(!strcmp(v[1],"info")||!strcmp(v[1],"info-photos")))return info(v[2],v[3],!strcmp(v[1],"info-photos"));if(argc==4&&!strcmp(v[1],"identity"))return metadata(v[2],v[3]);return 64;}

@@ -22,6 +22,9 @@ def main():
     parser.add_argument("--pmca", type=Path, required=True)
     parser.add_argument("--camera-build", type=Path, required=True, help="maintenance/build_camera.py --experimental-ftp output")
     parser.add_argument("--native-display", type=Path, required=True, help="Verified single/dual-buffer service build at /tmp_bt/a7X.so")
+    parser.add_argument("--output", type=Path, help="Write camera.zip here instead of the shipped installer resource")
+    parser.add_argument("--debug-diag", action="store_true",
+                        help="Maintainer debug payload only: add the opt-in Wi-Fi diagnostics. Never for release packages.")
     args = parser.parse_args()
     actual = subprocess.check_output(["git", "-C", str(args.pmca), "rev-parse", "HEAD"], text=True).strip()
     if actual != PMCA_REVISION:
@@ -58,6 +61,15 @@ def main():
         if not name.endswith('.sh') and (not value.startswith(b"\x7fELF\x01\x01") or value[18:20] != b"\x28\x00"):
             raise ValueError(name + ' must be an ARM little-endian ELF32 build')
         payload["/setting/a7c-uploader/plainftp/" + name] = value
+    # Wi-Fi diagnostics are a maintainer debug add-on, not part of releases.
+    if args.debug_diag:
+        listener = (args.camera_build / 'diag/listener').read_bytes()
+        if digest(listener) != built['files']['diag/listener']['sha256'] or not listener.startswith(b"\x7fELF\x01\x01"):
+            raise ValueError('Camera diag build differs')
+        payload['/setting/a7c-diag/listener'] = listener
+        payload['/setting/a7c-diag/listener.sha256'] = (digest(listener) + '\n').encode()
+        for name in ('diag.sh', 'start.sh'):
+            payload['/setting/a7c-diag/' + name] = (APP / 'camera/diag' / name).read_bytes()
     boot = (args.camera_build / 'experimental/plain-boot.sh').read_bytes()
     if digest(boot) != built['files']['experimental/plain-boot.sh']['sha256']:
         raise ValueError('Camera boot build differs')
@@ -88,13 +100,20 @@ def main():
     members = ["native-probe", "native-module.so", "native-start.sh", "consumer.sh", "native.sha256", "redraw"]
     payload[prefix + "manifest"] = "".join(digest(payload[prefix + n]) + " " + n + "\n" for n in members).encode()
     info = {
-        "format": 1, "payload_version": "0.4.2-photos.5-preview", "features": ["photos-jpeg-arw"],
+        "format": 1, "payload_version": "0.4.2-photos.13-preview", "features": ["photos-jpeg-arw"] + (["wifi-diag"] if args.debug_diag else []),
         "firmware": {"model": "ILCE-7C", "version": "2.00", "version_txt": "39119_05.2021111501", "dependencies": dependencies},
         "files": {},
     }
     resources = HERE / "a7c_installer/resources"
+    if args.debug_diag:
+        # Debug payloads go to an explicit external path, never the shipped resource.
+        if not args.output:
+            raise SystemExit("--debug-diag requires --output (debug payloads are not shipped)")
     resources.mkdir(parents=True, exist_ok=True)
-    with zipfile.ZipFile(resources / "camera.zip", "w", zipfile.ZIP_DEFLATED) as archive:
+    zip_path = args.output or resources / "camera.zip"
+    if args.debug_diag:
+        info["payload_version"] += "+diag"
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as archive:
         for target, value in sorted(payload.items()):
             name = target.removeprefix("/setting/")
             info["files"][name] = {"target": target, "bytes": len(value), "sha256": digest(value)}

@@ -47,6 +47,7 @@ static int fake_poll(void *fds,unsigned long n,int delay){
  if((scenario!=5&&steps==3)||(scenario==5&&steps==130))unlink("display.active");
  return 0;
 }
+#define RECT_UPLOAD_REDRAW frame_redraw
 #define pwrite publish
 #define millis fake_millis
 #define poll fake_poll

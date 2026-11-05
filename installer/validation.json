@@ -1,51 +1,55 @@
 {
-  "installer_version": "0.1.0-preview.25",
-  "package_revision": "preview.25",
-  "payload_version": "0.4.2-photos.5-preview",
-  "payload_sha256": "8dd69b3e94fa6773eb3c34b64b88c82ddb7b13413999f5f7cd2b28c252e38b5f",
+  "installer_version": "0.1.0-preview.26",
+  "package_revision": "preview.26",
+  "payload_version": "0.4.2-photos.13-preview",
+  "payload_sha256": "d3644ad22b9173809f866fa1fca1971760e387cc53a0e1d78bbec117e7d61470",
   "payload_files": 22,
   "channel": "preview",
   "supported_model": "ILCE-7C",
   "supported_firmware": "2.00",
   "build_date": "2026-11-05",
   "unit_tests": {
-    "macOS": 104,
-    "Windows": 103
+    "macOS": 109,
+    "Windows": 108
   },
   "macOS": {
     "arch": "arm64",
     "frozen_app_selfcheck": "Final frozen App, signature and embedded-file checks recorded in distributions.json",
     "signature": "ad-hoc; not notarized",
     "release_artifacts": "See distributions.json for final archive/entry checks; validation embedded before packaging.",
-    "source_tests": "104 passed"
+    "source_tests": "109 passed"
   },
   "Windows": {
     "arch": "x64",
-    "status": "103 source tests passed, one POSIX skip; previous Windows camera lifecycle retained; this photo payload device-tested via macOS/Wi-Fi",
+    "status": "108 source tests passed, one POSIX skip; previous Windows camera lifecycle retained; this payload device-tested via macOS",
     "os": "11 build 26200",
     "signature": "unsigned preview",
-    "source_tests": "104 run, 103 passed, 1 POSIX launcher skipped; Windows 11 source test run on 2026-11-05",
+    "source_tests": "109 run, 108 passed, 1 POSIX launcher skipped; Windows 11 source test run on 2026-11-05",
     "frozen_app_selfcheck": "Final frozen EXE and embedded-file checks recorded in distributions.json"
   },
-  "native_display": "ABI21 module unchanged byte-for-byte; external controller refreshes stale photo-mode progress and restores idle mark via the existing bounded native redraw helper. No idle redraw timer.",
+  "native_display": "ABI21 drawing module unchanged byte-for-byte; external controller keeps the active guardian heartbeat alive during the photo-page redraw (fixes progress retired mid-upload, consumer rc 77). No idle redraw timer.",
   "privacy": {
     "no_camera_password_in_artifacts": true,
     "no_sony_libraries_fonts_media": true,
     "debug_listener_in_payload": false
   },
   "changes": [
-    "Fix photo standby progress remaining at the idle icon: allow natural redraw first, then request a native redraw only for a stale changed percentage",
-    "After upload/EOF, the independent guardian restores the idle/error indicator even on a static photo OSD",
-    "Uploader, JPEG/ARW toggle, FTP size confirmation, SD receipts, retry policy, drawing DSO and USB drivers unchanged"
+    "Fix photo-page progress failing mid-upload: the redraw wait now keeps the 3 s guardian heartbeat alive",
+    "Upload and display act as one service: a display failure finishes the current file, then stops the service (exit 91, no restart); stale display state is a failure, not a silent skip",
+    "SD root listings disturbed by native console messages are retried (75/76) instead of stopping the worker; genuine receipt conflicts still stop",
+    "Faster response: display start overlaps the pre-copy gate; recorder and card/open-handle checks run concurrently; photo-standby recorder sample authorises the SD receipt fast path",
+    "Lower idle load: quiet fallback scans step 30 s -> 60 s (photos) / 120 s (video only) after consecutive quiet results; settle re-checks end once the queue drains; unknown recorder layouts retry instead of polling for the whole session",
+    "FTP health retry capped at 2 min; per-upload phase timings and native query timings kept in a bounded RAM log",
+    "Installer: post-install health check bounded on the camera (no USB command timeout); held display lock reported as restart required; release payload contains no Wi-Fi diagnostics"
   ],
   "sharing_status": "Private GitHub prerelease; macOS arm64, Windows x64 and CLI scripts. Tested ILCE-7C2.00; other firmware untested.",
   "worker_tests": {
-    "macOS": 140,
+    "macOS": 158,
     "result": "passed; host C/shell/FTP integration; no camera I/O"
   },
   "native_start_tests": 1,
   "unit_test_skips": {
-    "Windows": "1 POSIX launcher test; 104 run, 103 passed; skipped case executed on macOS"
+    "Windows": "1 POSIX launcher test; 109 run, 108 passed; skipped case executed on macOS"
   },
   "script_acceptance": {
     "entrypoints": "macOS .command --help / menu start-exit and Windows CMD menu start-exit passed using prepared runtime and existing administrator session",
@@ -57,168 +61,6 @@
   },
   "discovery_tests": 14,
   "previous_camera_runtime_acceptance": {
-    "candidate_payload": "0.4.1-installer.14-preview",
-    "status": ".14 Wi-Fi persistent update and real no-recording wake accepted: LAN greeting to FTP login1.02761s and observed healthy icon2.377745s; same worker1445, all67 SD rows retained, native suspend/resume13/13, no pending lifecycle, debug hold released.",
-    "previous_payload": "0.4.1-installer.6-preview",
-    "previous_evidence": "GUI uninstall and 28 managed paths absent; cold clean state; first install with new Mac FTP account; standalone GUI start and native display health ready; 32 completed uploads with SD receipts, including C0249 20978709 bytes",
-    "auto_start_scope": "Passed via fresh GUI install itself, no standalone start action",
-    "black_screen": "historical Bluetooth WARMBOOT / wake failure root cause remains open",
-    "reboot": "non-forced software reboot restored upload/display health; not a physical cold-power test",
-    "new_upload": "C0253 and C0252 each 20978709 bytes; SD U6E0A66A.RCP and U181A5EA.RCP; FTP size proof and DISPLAY_EXIT rc0; subsequent real backlog uploads resumed after outage.",
-    "timing": {
-      "backlog_prepare_mean_before": 9.688,
-      "backlog_prepare_mean_after": 7.663,
-      "after_intervals": 9,
-      "new_clip_selection_to_copy_before": 6.47,
-      "new_clip_selection_to_copy_after": 6.27,
-      "new_clip_samples_per_version": 1
-    },
-    "target": "Mac temporary ordinary FTP 192.168.5.16:21, /Camera; original NAS configuration remains in private camera backup",
-    "cli_lifecycle": "Actual macOS CLI uninstall of preview.12/.13 and clean install .13 passed; .9 CLI --reuse file update then software reboot passed. .10 was updated over authenticated RAM maintenance, not freshly CLI installed.",
-    "ftp_failure_recovery": "Real temporary FTP SIGSTOP 15s with independent SIGCONT watchdog; native health2 while offline, then automatic health1 without restarting worker PID1401; debug hold released.",
-    "progress_recovery": "Pre-write rc86 cancellation during operator pause diagnosed and optional display explicitly rearmed; subsequent uploads C0225..C0220 DISPLAY_EXIT rc0.",
-    "wake_scope": "Actual no-recording wake accepted on ILCE-7C2.00: sampler detected wlan0 device-generation change and interrupted wait; FTP check/retry/native error clearing confirmed on worker2371. Uses no clock-based inference, extra daemon or idle FTP heartbeat.",
-    "transfer_interruption": {
-      "clip": "C0202.MP4",
-      "drop_after_bytes": 1051248,
-      "completed_bytes": 41952849,
-      "receipt": "U5B7BA0A.RCP",
-      "result": "Same worker1401 retried automatically; partial was not published or receipted; native2 -> 1; display cleanup rc0."
-    },
-    "lost_commit_reply": {
-      "clip": "C0196.MP4",
-      "completed_bytes": 46148105,
-      "receipt": "U7820D9A.RCP",
-      "result": "RNTO succeeded but success reply was suppressed and connection closed; same worker1401 recovered, exactly one STOR, final mtime and length unchanged, receipt added after reconciliation."
-    },
-    "temporary_ftp_audit": {
-      "completed_videos": 64,
-      "bytes": 2043173735,
-      "largest_bytes": 218138371,
-      "partial_files": 0,
-      "quiet_seconds": 357,
-      "scope": "Receiver-side audit; camera went offline before final SD/log snapshot, no sleep/wake test requested."
-    },
-    "post_fault_new_video": {
-      "clip": "C0254.MP4",
-      "bytes": 25173253,
-      "receipt": "U97FA95A.RCP",
-      "worker": 1401,
-      "display_cleanup": 0,
-      "native_health": 1,
-      "result": "Passed, no camera or worker restart; no repeated old-file STOR."
-    },
-    "wake_acceptance": {
-      "network_generations": [
-        35,
-        0,
-        37
-      ],
-      "worker": 2371,
-      "native_error": 2,
-      "native_recovered": 1,
-      "same_worker": true,
-      "test_fault_removed": true,
-      "evidence": "network-wake-acceptance.json"
-    },
-    "fast_initial_recovery": {
-      "initial_retry_delays_seconds": [
-        1,
-        1
-      ],
-      "sustained_failure_backoff_seconds": [
-        20,
-        40,
-        80,
-        160,
-        320,
-        600
-      ],
-      "two_failures_to_login_seconds": 3.191463,
-      "worker": 2192,
-      "same_worker": true,
-      "scope": "Historical .12: two injected failures on an already-connected network recovered in 3.19s, but actual wakes still took about23s; superseded by .13 elapsed-time recovery window."
-    },
-    "elapsed_recovery_window": {
-      "seconds": 10,
-      "retry_delay_seconds": 1,
-      "sustained_failure_backoff": "20 to 600s after window; success clears window",
-      "evidence": "real-wake-window-ready.log",
-      "actual_wake_timing": {
-        "payload": ".13",
-        "lan_to_ftp_login_seconds": 4.576816,
-        "lan_to_observed_normal_icon_seconds": 6.060156,
-        "interface_to_success_seconds": 10.64,
-        "acceptance_passed": false,
-        "cause": "A connection begun before LAN readiness consumed its 4-second timeout; .14 limits only initial-window probes to 1 second.",
-        "scope": "Historical .13 measurement, superseded by .14 fast-check result below"
-      }
-    },
-    "fast_check_real_wake": {
-      "payload": "0.4.1-installer.14-preview",
-      "first_tcp_to_ftp_login_seconds": 1.02761,
-      "first_tcp_to_observed_normal_icon_seconds": 2.377745,
-      "interface_to_success_seconds": 7.719999999999345,
-      "latest_network_generation_change": [
-        "0",
-        "51",
-        "6256.47"
-      ],
-      "same_worker": true,
-      "debug_hold_released": true,
-      "no_pending_native_lifecycle": true,
-      "checked_rows": 67,
-      "passed": true,
-      "worker": 1445,
-      "evidence": "real-wake-fast-check-acceptance.json",
-      "scope": "One real wake, ordinary FTP without injected failures; icon time is a post-login read-only observation including query overhead, not exact screen transition timestamp."
-    },
-    "windows_lifecycle": {
-      "installer": "0.1.0-preview.21 pathfix",
-      "uninstall": true,
-      "managed_paths_absent": 27,
-      "owned_preload_absent": true,
-      "driver_records_restored": 3,
-      "own_oem_infs_removed": true,
-      "clean_state_after_power_removal": true,
-      "fresh_install": true,
-      "service_started": true,
-      "health": "ready",
-      "requires_power_cycle_after_install": false,
-      "supervisor_pid": 1030,
-      "worker_pid": 1041,
-      "new_video": {
-        "clip": "C0258.MP4",
-        "bytes": 20978709,
-        "receipt": "UF786A6A.RCP",
-        "receipt_slot_matches_remote_identity": true,
-        "same_worker": 1041,
-        "display_cleanup": 0,
-        "hold_released": true,
-        "evidence": "windows-new-video-acceptance.json"
-      },
-      "evidence": "windows-device-e2e-20261103/windows-fresh-install-acceptance.json",
-      "frozen_gui": {
-        "installer": "0.1.0-preview.22",
-        "installed_recognition": true,
-        "service_ready": true,
-        "inline_ftp_test": true,
-        "disconnect": true,
-        "scope": "Existing elevated interactive token; no UAC delegation or GUI install/uninstall button claim",
-        "evidence": "gui22-local.json"
-      },
-      "final_driver_restore": {
-        "installer": "0.1.0-preview.22",
-        "owned_oem_infs_removed": 3,
-        "active_driver": "USBSTOR",
-        "active_inf": "usbstor.inf",
-        "absent_matching_port_instances_accepted": true,
-        "camera_service_retained": true,
-        "evidence": "windows22-final-driver-audit.json"
-      }
-    }
-  },
-  "camera_runtime_acceptance": {
     "candidate_payload": "0.4.2-photos.5-preview",
     "status": "110 backlog photo files accepted; .2 Wi-Fi update uploaded four new files with exact lengths, SD receipts and display cleanup; software reboot autostart and all192 prior media deduplicated",
     "photo_directory": "55 JPEG/ARW pairs parsed from native IFSYS DCIM listing",
@@ -274,5 +116,12 @@
       "deployment": "Wi-Fi persistent update without reboot or reinstalling uploader",
       "sleep_or_cold_boot_tests": "Not repeated for this external-controller fix"
     }
-  }
+  },
+  "camera_runtime_acceptance": {
+    "candidate_payload": "0.4.2-photos.13-preview (same 22 files as release; maintainer camera also carries the debug Wi-Fi diagnostics add-on)",
+    "status": "Installed on ILCE-7C 2.00 over USB. Progress bar shown and indicator restored on new RAW+JPEG uploads after the heartbeat fix (.10); idle quiet waits observed stepping 30 s -> 60 s (.6); SD-listing noise retry (.8) and display-failure service stop (.9) exercised; phase timings recorded (.11).",
+    "idle_cpu": "Uploader worker incl. children 1.0 % of one core over 303 s idle in photo mode (camera main process 51 %, system 70 % of 4 cores)",
+    "body_hash_or_readback": false
+  },
+  "display_tests": 139
 }

@@ -11,7 +11,7 @@ from .operations import Installer
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description="A7C USB Installer — ILCE-7C 2.00")
-    parser.add_argument("action", choices=("detect", "inspect", "diagnose", "install", "configure", "uninstall", "restore", "start", "test-ftp", "driver-install", "driver-restore"))
+    parser.add_argument("action", choices=("detect", "inspect", "diagnose", "install", "configure", "uninstall", "restore", "start", "test-ftp", "driver-install", "driver-restore", "diag-enable", "diag-disable"))
     parser.add_argument("--host", help="NAS IPv4")
     parser.add_argument("--port", type=int, default=21)
     parser.add_argument("--username")
@@ -25,15 +25,20 @@ def main(argv=None):
     parser.add_argument("--yes", action="store_true", help="执行安装/配置/卸载/恢复")
     parser.add_argument("--full", action="store_true", help="inspect 时验证原厂文件依赖")
     parser.add_argument('--keep-driver', action='store_true', help='Windows 卸载相机服务后保留电脑驱动')
+    parser.add_argument('--bundle', help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
 
     def log(message):
         print(message, file=sys.stderr, flush=True)
 
     try:
-        if args.action in ("install", "configure", "uninstall", "restore", "driver-install", "driver-restore") and not args.yes:
+        if args.action in ("install", "configure", "uninstall", "restore", "driver-install", "driver-restore", "diag-enable", "diag-disable") and not args.yes:
             raise InstallerError("此命令会修改相机应用或 Windows USB 驱动；检查参数后添加 --yes 执行。")
         settings = None
+        diag_token = None
+        if args.action == "diag-enable":
+            # Key comes from the pairing client on stdin, never argv/env.
+            diag_token = sys.stdin.readline().strip()
         if args.action in ("install", "configure", "test-ftp") and not args.reuse:
             if not args.host or not args.username:
                 raise InstallerError("请填写 --host 与 --username；密码通过隐藏输入读取。")
@@ -53,7 +58,7 @@ def main(argv=None):
                 result = {"usb": detect()}
             else:
                 with SonyUsb(log) as camera:
-                    engine = Installer(camera, Bundle(), log)
+                    engine = Installer(camera, Bundle(args.bundle), log)
                     if args.action == "inspect":
                         result = engine.inspect(args.full)
                     elif args.action == "diagnose":
@@ -64,6 +69,10 @@ def main(argv=None):
                         result = engine.uninstall()
                     elif args.action == "start":
                         result = engine.start()
+                    elif args.action == "diag-enable":
+                        result = engine.diag_enable(diag_token)
+                    elif args.action == "diag-disable":
+                        result = engine.diag_disable()
                     else:
                         result = engine.restore()
                 if args.action == 'uninstall' and sys.platform == 'win32' and not args.keep_driver:

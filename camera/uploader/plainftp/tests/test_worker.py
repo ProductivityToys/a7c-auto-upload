@@ -59,7 +59,7 @@ elif op in ('write','write-verify'):
 else:raise SystemExit(90)
 ''')
  def exe(self,name,body):p=self.d/name;p.write_text(body);p.chmod(0o700)
- def attempt(self,torn=False,source_unready=False,photo=None):
+ def attempt(self,torn=False,source_unready=False,photo=None,gate_fail=False):
   old=(SRC.parent/'worker.sh').read_text();functions=''
   for name in ['log','uptime_seconds','wait_child','cleanup_completed_fifos']:
    functions+=re.search(r'^'+name+r'\(\) \{\n.*?^}\n',old,re.M|re.S)[0]
@@ -82,13 +82,15 @@ SOURCE_ROW="C0001.MP4 $SIZE C0001M01.XML $XSIZE 2026-10-22T17:00:00 2026-10-22T1
 source_checked() { return 0; }
 source_same() { return 0; }
 receipt_card_ready() { return 0; }
-plain_attempt
-exit $?
+plain_attempt; rc=$?
+[ "${DISPLAY_FAILED:-0}" != 1 ] || echo DISPLAY_FAILED >> "$D/flags"
+exit $rc
 '''
   if photo:
    script=script.replace('VIDEO=C0001.MP4','VIDEO='+photo)
    script=script.replace('SOURCE_ROW="C0001.MP4 $SIZE C0001M01.XML $XSIZE 2026-10-22T17:00:00 2026-10-22T17:00:00"',f'SOURCE_ROW="{photo} $SIZE - 0 2026-10-22T17:00:00 -"')
   if source_unready:script=script.replace('source_checked() { return 0; }','source_checked() { return 1; }')
+  if gate_fail:script=script.replace('source_same() { return 0; }','source_same() { sleep .2; return 1; }')
   script=script.replace('/bin/ash','/bin/sh').replace('/proc/$$/stat',str(self.root/'owner-stat')).replace('/proc/uptime',str(self.root/'uptime'))
   f=self.root/'attempt.sh';f.write_text(script)
   p=subprocess.run(['sh',str(f)],env=dict(os.environ,TEST_RAM=str(self.d),TORN='1' if torn else '0'),capture_output=True,timeout=25)
@@ -158,11 +160,31 @@ echo restored >> "$TEST_RAM/display-events"
   self.assertFalse((self.d/'display.active').exists());self.assertFalse((self.d/'display.disabled').exists())
   p=self.attempt();self.assertEqual(p.returncode,0,p.stderr.decode())
   self.assertEqual((self.d/'display-events').read_text(),'start\nrestored\n')
- def test_display_failure_does_not_fail_transfer_or_receipt(self):
+ def test_display_failure_completes_this_file_then_flags_service_stop(self):
   self.enable_display(fail=True);p=self.attempt();self.assertEqual(p.returncode,0,p.stderr.decode())
-  self.assertEqual(len(list(self.card.iterdir())),1);self.assertTrue((self.d/'display.disabled').exists())
-  self.assertIn('DISPLAY_EXIT rc=97',(self.d/'events.log').read_text())
+  self.assertEqual(len(list(self.card.iterdir())),1);self.assertFalse((self.d/'display.disabled').exists())
+  events=(self.d/'events.log').read_text()
+  self.assertIn('DISPLAY_EXIT rc=97',events);self.assertIn('DISPLAY_FAILED reason=exit rc=97',events)
+  self.assertEqual((self.d/'flags').read_text(),'DISPLAY_FAILED\n')
   self.assertFalse((self.d/'display.active').exists())
+ def test_stale_display_state_is_a_failure_not_a_silent_skip(self):
+  self.enable_display();(self.d/'display.active').write_text('old\n')
+  p=self.attempt();self.assertEqual(p.returncode,0,p.stderr.decode())
+  self.assertIn('DISPLAY_FAILED reason=stale_active',(self.d/'events.log').read_text())
+  self.assertEqual((self.d/'flags').read_text(),'DISPLAY_FAILED\n')
+ def test_display_overlaps_gate_and_ends_cleanly_when_gate_fails(self):
+  self.enable_display();p=self.attempt(gate_fail=True);self.assertEqual(p.returncode,75,p.stderr.decode())
+  self.assertEqual((self.d/'display-events').read_text(),'start\nrestored\n')
+  self.assertFalse(list(self.card.iterdir()));self.assertFalse((self.d/'display.active').exists())
+  self.assertFalse((self.d/'flags').exists())
+  events=(self.d/'events.log').read_text();self.assertNotIn('FTP_COPY_BEGIN',events);self.assertIn('DISPLAY_EXIT rc=0',events)
+ def test_upload_logs_phase_timings_before_copy(self):
+  p=self.attempt();self.assertEqual(p.returncode,0,p.stderr.decode())
+  lines=(self.d/'events.log').read_text().splitlines()
+  phases=[l for l in lines if l.startswith('FTP_PHASES C0001.MP4 ')];self.assertEqual(len(phases),1,lines)
+  for key in ('select=','receipt=','lease=','gate=','relay='):self.assertIn(key,phases[0])
+  self.assertNotIn('=-',phases[0])
+  self.assertLess(lines.index(phases[0]),[i for i,l in enumerate(lines) if l.startswith('FTP_COPY_BEGIN')][0])
  def test_network_failure_clears_display_then_retry_starts_new_display(self):
   self.enable_display();self.fault='truncate';p=self.attempt();self.assertEqual(p.returncode,1,p.stderr.decode())
   self.assertFalse((self.d/'display.active').exists());self.assertFalse(list(self.card.iterdir()))

@@ -1,95 +1,82 @@
 {
-  "package_revision": "preview.25",
-  "installer_version": "0.1.0-preview.25",
-  "payload_version": "0.4.2-photos.5-preview",
-  "payload_sha256": "8dd69b3e94fa6773eb3c34b64b88c82ddb7b13413999f5f7cd2b28c252e38b5f",
-  "artifact_directory": "/Volumes/ExtWorkspace/a7c-ftp-research/releases/installer-0.1.0-preview.25",
-  "release_url": "https://github.com/ProductivityToys/a7c-auto-upload/releases/tag/v0.1.0-preview.25",
-  "private": true,
-  "prerelease": true,
-  "assets": {
-    "a7c-installer-0.1.0-preview.25-scripts.zip": {
-      "bytes": 3933110,
-      "sha256": "e5cf87ab89233bb3a452ce59df4c979f13b82a25ea48c63b3465ee58d5eb22a0"
-    },
-    "a7c-installer-0.1.0-preview.25-macos-arm64.dmg": {
-      "bytes": 40449167,
-      "sha256": "e49b856c79e0bc1ce65fdf6abcbb18dd6a2a25bdd0c86531dee8c70fd6b9dea7"
-    },
-    "a7c-installer-0.1.0-preview.25-windows-x64.zip": {
-      "bytes": 46879242,
-      "sha256": "44aef362235cc54ce86a90feed4801c946c994671737d231631e285eccaed1dd"
-    }
+ "package_revision": "preview.26",
+ "installer_version": "0.1.0-preview.26",
+ "payload_version": "0.4.2-photos.13-preview",
+ "payload_sha256": "d3644ad22b9173809f866fa1fca1971760e387cc53a0e1d78bbec117e7d61470",
+ "artifact_directory": "/Volumes/ExtWorkspace/a7c-ftp-research/releases/installer-0.1.0-preview.26",
+ "release_url": "https://github.com/ProductivityToys/a7c-auto-upload/releases/tag/v0.1.0-preview.26",
+ "private": true,
+ "prerelease": true,
+ "assets": {
+  "a7c-installer-0.1.0-preview.26-scripts.zip": {
+   "bytes": 3936185,
+   "sha256": "f8c8f5342157437007b2f72abf69ea3ff73669a7dd387cb8aa040bea58eaa7fc"
   },
-  "verification": {
-    "macOS": {
-      "checksums": true,
-      "zip_crc": true,
-      "script_help": true,
-      "macos_numbered_menu": true,
-      "macos_menu_scope": "prepared shared runtime, existing sudo authorization, exit only; no camera access",
-      "dmg_readonly_mount": true,
-      "macos_signature": true,
-      "macos_plist_version": 25,
-      "embedded_help_bytes_match": 6,
-      "all_payloads_match": true,
-      "dmg_selfcheck": {
-        "installer_version": "0.1.0-preview.25",
-        "platform": "macOS-27.0.1-arm64-arm-64bit-Mach-O",
-        "payload_version": "0.4.2-photos.5-preview",
-        "payload_files": 22,
-        "payload_sha256": "8dd69b3e94fa6773eb3c34b64b88c82ddb7b13413999f5f7cd2b28c252e38b5f",
-        "firmware": "2.00",
-        "usb": "skipped: offline self-check",
-        "bundled_help": {
-          "guides": 6,
-          "status": "passed; readable inside App"
-        }
-      }
-    },
-    "Windows": {
-      "exe": "passed: final ZIP extracted, Chinese filename, offline selfcheck",
-      "cmd": "passed: actual CMD launcher, menu startup and exit in path with spaces",
-      "scope": "Existing administrator SSH token and prepared shared Python runtime; no UAC/first-dependency-download/camera/driver changes in this entry test",
-      "selfcheck": {
-        "installer_version": "0.1.0-preview.25",
-        "platform": "Windows-11-10.0.26200-SP0",
-        "payload_version": "0.4.2-photos.5-preview",
-        "payload_files": 22,
-        "payload_sha256": "8dd69b3e94fa6773eb3c34b64b88c82ddb7b13413999f5f7cd2b28c252e38b5f",
-        "firmware": "2.00",
-        "usb": "skipped: offline self-check",
-        "bundled_help": {
-          "guides": 6,
-          "status": "passed; readable inside App"
-        },
-        "windows_driver": {
-          "libwdi": "1.5.1",
-          "libusb_win32": "1.4.0.2",
-          "component": "loaded and hash verified; no device enumeration or driver changes",
-          "abi_sizes": [
-            80,
-            48,
-            16
-          ]
-        }
-      }
-    },
-    "source_tests": {
-      "macOS": {
-        "run": 104,
-        "passed": 104
-      },
-      "Windows": {
-        "run": 104,
-        "passed": 103,
-        "skipped": 1
-      },
-      "display": {
-        "run": 9,
-        "passed": 9
-      }
-    },
-    "scope": "Frozen App/entry/embedded-file offline checks; exact camera payload .5 already validated via Wi-Fi on ILCE-7C2.00. No camera or driver changes during packaging."
+  "a7c-installer-0.1.0-preview.26-macos-arm64.dmg": {
+   "bytes": 40376624,
+   "sha256": "16d9f24befbba29e1a52092d42fc07a4e1e68cea1c4ef796d93dffe6d1b6c695"
+  },
+  "a7c-installer-0.1.0-preview.26-windows-x64.zip": {
+   "bytes": 46882187,
+   "sha256": "82ce3679d3ed591bee154ba3099d68bf84a3989ba0be9b042edfb3afe280a4c6"
   }
+ },
+ "verification": {
+  "macOS": {
+   "checksums": true,
+   "zip_crc": true,
+   "dmg_checksum": "VALID",
+   "dmg_readonly_mount": true,
+   "macos_signature": true,
+   "dmg_selfcheck": {
+    "installer_version": "0.1.0-preview.26",
+    "platform": "macOS-27.0.1-arm64-arm-64bit-Mach-O",
+    "payload_version": "0.4.2-photos.13-preview",
+    "payload_files": 22,
+    "payload_sha256": "d3644ad22b9173809f866fa1fca1971760e387cc53a0e1d78bbec117e7d61470",
+    "firmware": "2.00",
+    "usb": "skipped: offline self-check",
+    "bundled_help": {
+     "guides": 6,
+     "status": "passed; readable inside App"
+    }
+   },
+   "all_payloads_match": true,
+   "note": "release.py verified App payload and six bundled guides byte-for-byte"
+  },
+  "Windows": {
+   "build_archive_sha256": "d7f850ed91b14b21e677d767611e706b6df4035f924c2ebfbd2452e46b5b2a99",
+   "build_archive_bytes": 46892177,
+   "download_sha256_match": true,
+   "source_tests": "109 run, 108 passed, 1 POSIX skipped",
+   "selfcheck": {
+    "installer_version": "0.1.0-preview.26",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "payload_version": "0.4.2-photos.13-preview",
+    "payload_files": 22,
+    "payload_sha256": "d3644ad22b9173809f866fa1fca1971760e387cc53a0e1d78bbec117e7d61470",
+    "firmware": "2.00",
+    "usb": "skipped: offline self-check",
+    "bundled_help": {
+     "guides": 6,
+     "status": "passed; readable inside App"
+    },
+    "windows_driver": {
+     "libwdi": "1.5.1",
+     "libusb_win32": "1.4.0.2",
+     "component": "loaded and hash verified; no device enumeration or driver changes",
+     "abi_sizes": [
+      80,
+      48,
+      16
+     ]
+    }
+   },
+   "scope": "Frozen EXE offline self-check on the Windows 11 build host; no camera, UAC or driver changes"
+  },
+  "scripts": {
+   "zip_crc": true,
+   "payload_matches_source": true
+  }
+ }
 }

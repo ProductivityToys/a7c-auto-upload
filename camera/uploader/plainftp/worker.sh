@@ -19,12 +19,17 @@ IFS= read -r FTP_PASSWORD || { $B rmdir "$D/lock"; exit 64; }
 exec 0</dev/null
 ftp() { printf '%s\n' "$FTP_PASSWORD" | "$D/plainftp" "$1" "$HOST" "$PORT" "$USER" "$ROOT" "$IDENTITY" "$SIZE" "$2" "$LIMIT" ${MEDIA_EXT:+$MEDIA_EXT}; }
 plain_display_begin() {
- # Optional consumer, installed separately in RAM. No helper means no display
- # process, marker, or extra polling. No media identity or credentials exposed.
+ # Upload and display are one service. With display enabled, a missing or
+ # stale consumer is a display failure: finish this file, then stop the whole
+ # service (plain_run). With display disabled there is no process or polling.
+ # No media identity or credentials exposed.
  DISPLAY_PID=; DISPLAY_TOKEN=
  [ ! -d "$D/display-bootstrap.lock" ] || { log 'DISPLAY_SKIPPED stage_pending'; return 0; }
- [ -x "$D/upload-display.sh" ] && [ ! -e "$D/display.disabled" ] || return 0
- [ ! -e "$D/display.active" ] || { log 'DISPLAY_SKIPPED stale_active'; return 0; }
+ if [ ! -x "$D/upload-display.sh" ]; then
+  [ ! -f /setting/a7c-display/enabled ] || { DISPLAY_FAILED=1; log 'DISPLAY_FAILED reason=helper_missing'; }
+  return 0
+ fi
+ [ ! -e "$D/display.active" ] || { DISPLAY_FAILED=1; log 'DISPLAY_FAILED reason=stale_active'; return 0; }
  IFS= read -r display_stat < "/proc/$$/stat" || return 0
  display_stat=${display_stat##*) }
  set -- $display_stat
@@ -45,26 +50,28 @@ plain_display_end() {
  fi
  # Cooperate with the native transaction's independent 15-second guardian.
  # Never signal/kill its setter. Retain the upload lease until this bounded
- # cleanup wait ends; display failure never changes FTP or receipt results.
+ # cleanup wait ends. Display failure never changes this file's FTP or receipt
+ # result; it only makes plain_run stop the service afterwards.
  display_wait=0
  while [ -n "$DISPLAY_PID" ] && kill -0 "$DISPLAY_PID" 2>/dev/null && [ "$display_wait" -lt 22 ]; do
   $B sleep 1; display_wait=$((display_wait+1))
  done
  if [ -n "$DISPLAY_PID" ]; then
   if kill -0 "$DISPLAY_PID" 2>/dev/null; then
-   : > "$D/display.disabled"; log 'DISPLAY_CLEANUP_TIMEOUT disabled=1'
+   DISPLAY_FAILED=1; log 'DISPLAY_FAILED reason=cleanup_timeout'
   else
    wait "$DISPLAY_PID"; display_rc=$?
    log "DISPLAY_EXIT rc=$display_rc"
-   [ "$display_rc" = 0 ] || : > "$D/display.disabled"
+   [ "$display_rc" = 0 ] || { DISPLAY_FAILED=1; log "DISPLAY_FAILED reason=exit rc=$display_rc"; }
   fi
  fi
  DISPLAY_PID=; DISPLAY_TOKEN=
  return 0
 }
-# Detailed per-query timings are an explicit RAM-only maintenance option.
-TIMING_ENABLED=0
-[ ! -f "$D/trace-timing" ] || TIMING_ENABLED=1
+# Per-query timings: bounded RAM log, always on. Builtin reads only; the
+# size check (one process) runs every 32 records, not per query.
+TIMING_ENABLED=1
+[ ! -f "$D/no-timing" ] || TIMING_ENABLED=0
 timed() {
  # Bounded RAM-only timings. Arguments/output (including credentials) are never logged.
  local timing_op=$1 timing_before timing_after timing_rest timing_rc
@@ -74,7 +81,8 @@ timed() {
  "$@"; timing_rc=$?
  IFS=' ' read -r timing_after timing_rest < /proc/uptime || timing_after=unknown
  printf 'op=%s start=%s end=%s rc=%s\n' "$timing_op" "$timing_before" "$timing_after" "$timing_rc" >> "$D/plain-timings.log"
- if [ "$($B wc -c < "$D/plain-timings.log")" -gt 16384 ]; then
+ TIMING_COUNT=$((${TIMING_COUNT:-0}+1))
+ if [ "$((TIMING_COUNT%32))" = 1 ] && [ "$($B wc -c < "$D/plain-timings.log")" -gt 16384 ]; then
   $B tail -c 8192 "$D/plain-timings.log" > "$D/plain-timings.next" && $B mv "$D/plain-timings.next" "$D/plain-timings.log"
  fi
  return "$timing_rc"
@@ -173,11 +181,20 @@ source_same() {
  usb_media_ready || return 1
  # Keep the complete recorder check immediately before copying. Reuse only
  # the <=8s drive/directory listing, then refresh card/open handles in place.
- timed recording recording_idle || { cache_invalidate; return 1; }
+ # Recorder state (mpr_monio) and card/open-handle info (mwf_monio) are
+ # separate native frontends: query them concurrently; both must pass.
+ local info_pid= info_rc=0 rec_rc
  if snapshot_fresh && [ "$((NOW-SNAPSHOT_AT))" -le 8 ] &&
     [ "$SNAPSHOT_LETTER" = "$DRIVE" ] && [ "$SNAPSHOT_CARD" = "$SOURCE_CARD" ]; then
+  $B rm -f "$D/transfer.info"
+  timed transfer_info "$D/monitor" info > "$D/transfer.info" 2> "$D/transfer-info.err" & info_pid=$!
+ fi
+ timed recording recording_idle; rec_rc=$?
+ if [ -n "$info_pid" ]; then CHILD_RC=1; wait_child "$info_pid"; info_rc=$CHILD_RC; fi
+ [ "$rec_rc" = 0 ] || { cache_invalidate; return 1; }
+ if [ -n "$info_pid" ]; then
+  [ "$info_rc" = 0 ] || { cache_invalidate; return 1; }
   LETTER=$DRIVE
-  timed transfer_info "$D/monitor" info > "$D/transfer.info" 2> "$D/query.err" || { cache_invalidate; return 1; }
   $B cp "$D/transfer.info" "$D/info" || { cache_invalidate; return 1; }
   filesystem_idle || return 1
  else
@@ -190,8 +207,11 @@ source_same() {
 }
 receipt_sample_idle() {
  # The existing read-only probe binds the current im.elf mapping/code/pointer.
- # Accept only the exact two XAVC standby rows used by the native fast path.
- local sample_header sample_ms sample_row sample_index sample_expected sample_extra
+ # Accept only two exact standby layouts: the two XAVC lines of movie mode
+ # (the native fast path), or the single Still line of photo mode, both with
+ # zero pending counts. Anything else falls back to the complete query. The
+ # receipt write still rechecks the current card and open handles.
+ local sample_header sample_ms sample_rows sample_row sample_index sample_extra layout
  {
   IFS= read -r sample_header || return 1
   case "$sample_header" in
@@ -199,16 +219,21 @@ receipt_sample_idle() {
    *) return 1;;
   esac
   case "$sample_ms" in ''|*[!0-9]*) return 1;; esac
+  sample_rows=
   for sample_index in 0 1 2 3; do
    IFS= read -r sample_row || return 1
-   case "$sample_index" in
-    0|1) sample_expected="line=$sample_index active=1 index=$sample_index type=256 state=1 count1=0 count2=0";;
-    *) sample_expected="line=$sample_index active=0 index=0 type=0 state=0 count1=0 count2=0";;
-   esac
-   [ "$sample_row" = "$sample_expected" ] || return 1
+   sample_rows="$sample_rows$sample_row|"
   done
   ! IFS= read -r sample_extra && [ -z "$sample_extra" ]
- } < "$D/receipt-recorder.sample"
+ } < "$D/receipt-recorder.sample" || return 1
+ for layout in movie still; do
+  if [ "$layout" = movie ]; then
+   [ "$sample_rows" = "line=0 active=1 index=0 type=256 state=1 count1=0 count2=0|line=1 active=1 index=1 type=256 state=1 count1=0 count2=0|line=2 active=0 index=0 type=0 state=0 count1=0 count2=0|line=3 active=0 index=0 type=0 state=0 count1=0 count2=0|" ] && return 0
+  else
+   [ "$sample_rows" = "line=0 active=1 index=0 type=1 state=1 count1=0 count2=0|line=1 active=0 index=0 type=0 state=0 count1=0 count2=0|line=2 active=0 index=0 type=0 state=0 count1=0 count2=0|line=3 active=0 index=0 type=0 state=0 count1=0 count2=0|" ] && return 0
+  fi
+ done
+ return 1
 }
 receipt_recording_idle() {
  local receipt_pid=${discovery_pid:-}
@@ -286,6 +311,11 @@ receipt_load() {
       $B mv "$D/receipt.read" "$D/receipt.$slot" || return 90
       if [ "$slot" = A ]; then SLOT_A="$D/receipt.A"; else SLOT_B="$D/receipt.B"; fi;;
    10) [ -n "$EMPTY_SLOT" ] || EMPTY_SLOT=$filename;;
+   75) # Native console noise inside the root listing: neither present nor
+       # absent. Re-read once now; otherwise retry later, never stop the worker.
+       ROOT_AT=
+       if [ "${1:-cached}" != fresh ]; then log 'SD_ROOT_UNREADABLE retry=fresh'; receipt_load fresh; return $?; fi
+       log 'SD_ROOT_UNREADABLE'; return 75;;
    *) return 90;;
   esac
  done
@@ -297,6 +327,9 @@ receipt_store() {
  # Card/handles were just rechecked; root is refreshed or within its old TTL.
  receipt_load cached; receipt_rc=$?
  [ "$receipt_rc" != 0 ] || return 0
+ # Upload is already length-confirmed remotely; an unreadable listing only
+ # delays the receipt. A later attempt finds the remote file and commits.
+ [ "$receipt_rc" != 75 ] || return 76
  [ "$receipt_rc" = 10 ] && [ -n "$EMPTY_SLOT" ] || return 90
  [ "$($B wc -c < "$D/receipt.write")" = 512 ] || return 90
  ROOT_AT=
@@ -307,23 +340,35 @@ receipt_store() {
  # exact readback equality already proves it is the same record, no re-decode.
  log "SD_RECEIPT $VIDEO $EMPTY_SLOT"
 }
+phase_mark() {
+ # Builtin read only: no process, no NAND, bounded RAM log line per upload.
+ local phase_now phase_rest
+ IFS=' ' read -r phase_now phase_rest < /proc/uptime || phase_now=unknown
+ eval "$1=\$phase_now"
+}
 plain_transfer() {
  plain_transfer_body; transfer_result=$?
  plain_display_end
  return "$transfer_result"
 }
 plain_transfer_body() {
+ # The display consumer needs ~2 s to attach (more under load). Start it
+ # with the upload lease already held, so it overlaps the native pre-copy
+ # gate instead of following it. A failed gate ends it in plain_transfer.
+ plain_display_begin
  source_same || return 75
+ phase_mark PH_GATE
  copy_rc=not_started; relay_rc=not_started; ftp_rc=not_started
  $B rm -f "$D/relay.ready" "$D/relay.result" "$D/guard.done" "$D/copy.done" "$D/receipt.write"
  $B mkfifo "$D/source.fifo" "$D/network.fifo" || return 90
- plain_display_begin
  ftp put "$D/network.fifo" > "$D/plain-ftp.log" 2>&1 & ftp_pid=$!
  $D/relay "$D" "$SIZE" > "$D/relay.log" 2>&1 & relay_pid=$!
  # Native bounded readiness wait avoids a full-second shell polling penalty.
  "$D/monitor" wait-ready relay "$relay_pid" || :
  copy_rc=76
  if [ -f "$D/relay.ready" ] && kill -0 "$relay_pid" 2>/dev/null; then
+  phase_mark PH_COPY
+  log "FTP_PHASES $VIDEO select=$PH_SELECT receipt=$PH_RECEIPT lease=$PH_LEASE gate=$PH_GATE relay=$PH_COPY"
   log "FTP_COPY_BEGIN $VIDEO"
   $D/monitor copy "$DRIVE" "$VIDEO" "$LIMIT" > "$D/copy.log" 2>&1; copy_rc=$?
  fi
@@ -351,6 +396,7 @@ plain_attempt() {
  # Directory-key/receipt checks need no per-file upload power lease.
  # The full source gate still runs after acquiring the actual upload lease.
  ATTEMPT_SKIPPED=0; lease_pid=; FTP_TRANSPORT_FAILED=0; MEDIA_EXT=
+ PH_RECEIPT=-; PH_LEASE=-; PH_GATE=-; PH_COPY=-; phase_mark PH_SELECT
  case "$VIDEO" in DCIM/*.JPG) MEDIA_EXT=JPG;; DCIM/*.ARW) MEDIA_EXT=ARW;; esac
  # 75 is pre-transfer source unavailability, not a failed FTP connection.
  result=75
@@ -358,13 +404,16 @@ plain_attempt() {
   IDENTITY=$($D/local-media row-identity "$SOURCE_ROW"); identity_rc=$?
   if [ "$identity_rc" = 0 ]; then
    receipt_load; found=$?
+   phase_mark PH_RECEIPT
    case "$found" in
     0) result=0; ATTEMPT_SKIPPED=1;;
+    75) result=76;;
     10) if [ -n "$EMPTY_SLOT" ]; then
          LIMIT=$((240 + SIZE / 32768)); [ "$LIMIT" -le 86000 ] || LIMIT=86000
          $B rm -f "$D/lease.ready" "$D/lease.done"
          $D/lease --upload-lease "$LIMIT" > "$D/lease.log" 2>&1 & lease_pid=$!
          "$D/monitor" wait-ready lease "$lease_pid" || :
+         phase_mark PH_LEASE
          if [ -f "$D/lease.ready" ]; then plain_transfer; result=$?; fi
         else result=90; fi;;
     *) result=90;;
@@ -404,13 +453,14 @@ scan_update() {
   known_card=$CARD
  fi
  discontinuity=0; changed=0
- if [ "$CARD" != "$previous_card" ] || [ "$NOW" -lt "$last_scan" ] || [ "$((NOW-last_scan))" -gt 45 ]; then
+ if [ "$CARD" != "$previous_card" ] || [ "$NOW" -lt "$last_scan" ] || [ "$((NOW-last_scan))" -gt "${CONTINUITY_LIMIT:-45}" ]; then
   discontinuity=1
  fi
  if [ ! -f "$D/plain.previous" ] || ! $B cmp "$D/plain.entries" "$D/plain.previous" > /dev/null 2>&1; then changed=1; fi
  if [ "$discontinuity" = 1 ] || [ "$changed" = 1 ]; then
   log "SCAN_REFRESH discontinuity=$discontinuity directory_changed=$changed"
   QUEUE_PENDING=1
+  [ "$changed" = 0 ] || QUIET_STREAK=0
   prune_rows "$D/plain.checked" && prune_rows "$D/plain.known" || return 90
   $B cp "$D/plain.entries" "$D/plain.previous" || return 90
  fi
@@ -494,39 +544,79 @@ ftp_health_ready() {
   FTP_HEALTH_DELAY=1; return 1
  fi
  FTP_LINK_FAST_UNTIL=0
+ # Capped at 2 min: Wi-Fi can recover without a new link generation (e.g.
+ # the camera regaining the NAS ARP entry), which would otherwise wait up to
+ # 10 min. A check is one TCP connect over an already associated radio.
  FTP_CHECK_BACKOFF=$((${FTP_CHECK_BACKOFF:-10}*2))
- [ "$FTP_CHECK_BACKOFF" -le 600 ] || FTP_CHECK_BACKOFF=600
+ [ "$FTP_CHECK_BACKOFF" -le 120 ] || FTP_CHECK_BACKOFF=120
  FTP_HEALTH_DELAY=$FTP_CHECK_BACKOFF
  return 1
+}
+quiet_interval() {
+ # Idle fallback only. The 1s recorder hint still wakes immediately on
+ # activity, network generation change or stop; this only spaces out the
+ # native directory query after consecutive fallbacks found nothing new.
+ # Photo mode keeps a shorter cap: a very short still capture may fall
+ # between hint samples and then relies on this fallback.
+ local quiet_cap=120
+ [ "${PHOTOS:-0}" != 1 ] || quiet_cap=60
+ if [ "${QUIET_STREAK:-0}" -lt 4 ]; then QUIET_WAIT=30
+ elif [ "${QUIET_STREAK:-0}" -lt 8 ]; then QUIET_WAIT=60
+ else QUIET_WAIT=$quiet_cap; fi
+ [ "$QUIET_WAIT" -le "$quiet_cap" ] || QUIET_WAIT=$quiet_cap
 }
 discovery_wait() {
  [ "$delay" != 0 ] || return 0
  # Only replaces the ordinary 2s idle/busy delay.
  # Backlog draining and exponential network backoff keep their own timings.
- # A 30s timeout plus normal query overhead fits the existing 45s continuity
- # bound; slow/unknown periods still invalidate the receipt-check cache.
+ # Quiet waits pass their own continuity bound to scan_update; unchanged rows
+ # are revalidated by exact intersection, never trusted by elapsed time alone.
  if [ "$delay" = 1 ] || [ "${DISCOVERY_OFF:-0}" = 1 ] || [ ! -x "$D/discovery" ]; then
   $B sleep "$delay"; return 0
  fi
  discovery_pid=$($B pidof im.elf)
- local wait_left=$delay wait_slice wait_before wait_after wait_rest wait_elapsed
- [ "$delay" != 2 ] || wait_left=30
+ local wait_left=$delay wait_slice wait_before wait_after wait_rest wait_elapsed wait_mode=retry
+ if [ "$delay" = 2 ]; then
+  uptime_seconds || NOW=0
+  if [ "$NOW" -lt "${SETTLE_UNTIL:-0}" ] && [ "$((SETTLE_UNTIL-NOW))" -le 40 ]; then
+   # Just after recording/capture ends the card may still be finishing the
+   # file (open handle, buffer flush) while the recorder already reads
+   # standby. Re-check every 2s for a bounded window instead of a full quiet
+   # interval in which nothing would wake us again.
+   wait_mode=settle; wait_left=2
+  else
+   SETTLE_UNTIL=0; wait_mode=idle; quiet_interval; wait_left=$QUIET_WAIT
+  fi
+  CONTINUITY_LIMIT=$((wait_left+15)); [ "$CONTINUITY_LIMIT" -ge 45 ] || CONTINUITY_LIMIT=45
+ fi
  while [ "$wait_left" -gt 0 ]; do
  wait_slice=$wait_left; [ "$wait_slice" -le 30 ] || wait_slice=30
  IFS=' ' read -r wait_before wait_rest < /proc/uptime || wait_before=0
  "$D/discovery" "$discovery_pid" wait "$wait_slice" "${FTP_LINK:-0}" > "$D/discovery.log" 2>&1; discovery_rc=$?
  case "$discovery_rc" in
-  0) [ "$delay" != 2 ] || log 'DISCOVERY_WAKE quiet_timeout';;
+  0|10|11|12) if [ "${DISCOVERY_RETRYING:-0}" = 1 ]; then DISCOVERY_RETRYING=0; log 'DISCOVERY_RESUMED'; fi;;
+ esac
+ case "$discovery_rc" in
+  0) ;;
   10|11) log "DISCOVERY_WAKE activity=$discovery_rc"
-     cache_invalidate; previous_card=none; QUEUE_PENDING=1;;
+     cache_invalidate; previous_card=none; QUEUE_PENDING=1; QUIET_STREAK=0
+     # Only a completed activity opens the settle window. A recording still
+     # in progress (11) keeps the normal quiet cadence until it ends.
+     if [ "$discovery_rc" = 10 ] && uptime_seconds; then SETTLE_UNTIL=$((NOW+40)); else SETTLE_UNTIL=0; fi
+     WAKE_UPLOADED=0
+     [ "$wait_mode" = retry ] || return 0;;
   12) log 'DISCOVERY_WAKE network'
-      FTP_CHECK_DUE=1; FTP_CHECK_BACKOFF=10
+      FTP_CHECK_DUE=1; FTP_CHECK_BACKOFF=10; QUIET_STREAK=0
       cache_invalidate; previous_card=none; QUEUE_PENDING=1; return 0;;
   20) return 0;;
-  *) # Still capture can temporarily change the recorder layout. Retry this
-     # read-only hint next cycle so idle photos do not force permanent polling.
-     if [ "${PHOTOS:-0}" = 1 ] && [ "$discovery_rc" = 95 ]; then
-      log 'DISCOVERY_RETRY photo_state'
+  *) # Mode changes (still capture, other movie formats, menus) can present a
+     # recorder layout this hint does not accept. Never treat it as idle: poll
+     # at the original 2s cadence and retry the read-only hint next cycle,
+     # instead of polling for the rest of the worker session.
+     QUIET_STREAK=0; SETTLE_UNTIL=0
+     if [ "$discovery_rc" = 95 ]; then
+      [ "${DISCOVERY_RETRYING:-0}" = 1 ] || log 'DISCOVERY_RETRY layout'
+      DISCOVERY_RETRYING=1
      else
       DISCOVERY_OFF=1; log "DISCOVERY_FALLBACK rc=$discovery_rc"
      fi
@@ -534,25 +624,32 @@ discovery_wait() {
      if [ "$delay" = 2 ]; then $B sleep 2; else $B sleep "$wait_left"; fi
      return 0;;
  esac
- [ "$delay" != 2 ] || return 0
+ [ "$wait_mode" != settle ] || return 0
  IFS=' ' read -r wait_after wait_rest < /proc/uptime || wait_after=$wait_before
  wait_elapsed=$((${wait_after%%.*}-${wait_before%%.*}))
  [ "$wait_elapsed" -ge 1 ] || wait_elapsed=1
  wait_left=$((wait_left-wait_elapsed))
  done
+ if [ "$wait_mode" = idle ]; then
+  log "DISCOVERY_WAKE quiet_timeout wait=$QUIET_WAIT"
+  QUIET_STREAK=$((${QUIET_STREAK:-0}+1))
+ fi
  return 0
 }
 plain_run() {
- BOOT=$($B cat /proc/sys/kernel/random/boot_id); DISCOVERY_OFF=0; SCAN_HOLD=
+ BOOT=$($B cat /proc/sys/kernel/random/boot_id); DISCOVERY_OFF=0; SCAN_HOLD=; DISPLAY_FAILED=0
+ # Legacy per-boot marker from versions that kept uploading without display.
+ $B rm -f "$D/display.disabled"
  FTP_HEALTH=unknown; FTP_CHECK_DUE=1; FTP_CHECK_BACKOFF=10
  $D/plainftp namespace "$HOST" "$PORT" "$USER" "$ROOT" > "$D/plain.namespace" || return 90
  $B rm -f "$D/plain.previous"; : > "$D/plain.checked"; : > "$D/plain.known"
  cache_invalidate
  backoff=10; previous_card=none; known_card=none; last_scan=0; QUEUE_PENDING=1
+ QUIET_STREAK=0; SETTLE_UNTIL=0; CONTINUITY_LIMIT=45; DISCOVERY_RETRYING=0
  scan_hold_start || return 90
  while [ "$STOP" = 0 ] && [ ! -f "$D/stop" ]; do
   if ! usb_media_ready; then
-   cache_invalidate; scan_hold_stop || return 90; delay=1
+   cache_invalidate; QUIET_STREAK=0; scan_hold_stop || return 90; delay=1
   elif ! ftp_health_ready; then
    scan_hold_stop || return 90; delay=$FTP_HEALTH_DELAY
   elif media_poll && uptime_seconds; then
@@ -561,7 +658,7 @@ plain_run() {
    # which freshly checks recorder/card/open handles and the selected row.
     choose_row || return 90
     if [ -n "$chosen" ]; then
-     QUEUE_PENDING=1
+     QUEUE_PENDING=1; QUIET_STREAK=0
      SOURCE_ROW=$chosen; SOURCE_CARD=$CARD; DRIVE=$LETTER
      read VIDEO SIZE XML XSIZE REST <<ROW
 $chosen
@@ -571,6 +668,7 @@ ROW
      ATTEMPT_SKIPPED=0; plain_attempt; rc=$?
      [ "${FTP_TRANSPORT_FAILED:-0}" != 1 ] || ftp_health_mark error
      if uptime_seconds; then last_scan=$NOW; fi
+     [ "$rc" != 0 ] || [ "$ATTEMPT_SKIPPED" = 1 ] || WAKE_UPLOADED=1
      case "$rc" in
       0) printf '%s\n' "$chosen" >> "$D/plain.checked" || return 90
          if [ "$priority" = new_or_changed ]; then printf '%s\n' "$chosen" >> "$D/plain.known" || return 90; fi
@@ -579,12 +677,21 @@ ROW
       90) return 90;;
       *) backoff=$((backoff*2)); delay=$backoff;;
      esac
+     # One service: the file above is complete (or safely retryable); stop
+     # rather than keep uploading without the display.
+     if [ "${DISPLAY_FAILED:-0}" = 1 ]; then log 'SERVICE_EXIT display_failed'; scan_hold_stop || return 90; return 91; fi
     else scan_hold_stop || return 90; backoff=10; delay=2
+     # The new file(s) of this wake are uploaded and nothing is pending: keep
+     # only a short tail of the settle window (a burst still flushing to the
+     # card), not 40 s of 2 s native directory queries.
+     if [ "${WAKE_UPLOADED:-0}" = 1 ] && uptime_seconds && [ "${SETTLE_UNTIL:-0}" -gt "$((NOW+6))" ]; then SETTLE_UNTIL=$((NOW+6)); fi
+     WAKE_UPLOADED=0
      [ "$QUEUE_PENDING" != 1 ] || log SCAN_DONE
      QUEUE_PENDING=0
     fi
   else
-   cache_invalidate
+   # Busy/unknown card state is not a quiet result; keep the short cadence.
+   cache_invalidate; QUIET_STREAK=0
    scan_hold_stop || return 90; previous_card=none; backoff=10; delay=2; QUEUE_PENDING=1
   fi
   [ "$backoff" -le 600 ] || backoff=600

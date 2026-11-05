@@ -17,7 +17,7 @@ def row(number, size=24, stamp="2026-10-20T11:00:00"):
 
 
 class SchedulerTests(unittest.TestCase):
-    def run_steps(self, steps, snapshot_times=None, expected_exit=42, checks=None):
+    def run_steps(self, steps, snapshot_times=None, expected_exit=42, checks=None, prelude="", epilogue=""):
         """Steps are (uptime, card, rows, gate_ok, attempt_result)."""
         with tempfile.TemporaryDirectory() as tmp:
             d = pathlib.Path(tmp)
@@ -75,10 +75,13 @@ media_gate() {{
 plain_attempt() {{
  printf '%s %s %s\\n' "$NOW" "$CARD" "$SOURCE_ROW" >> "$D/attempts"
  if [ "$attempt_result" = skip ]; then ATTEMPT_SKIPPED=1; return 0; fi
+ if [ "$attempt_result" = dfail ]; then DISPLAY_FAILED=1; return 0; fi
  return "$attempt_result"
 }}
-plain_run
-exit $?
+{prelude}
+plain_run; run_rc=$?
+{epilogue}
+exit $run_rc
 """
             p = subprocess.run(["sh"], input=script, text=True, capture_output=True, timeout=5)
             self.assertEqual(p.returncode, expected_exit, p.stderr)
@@ -87,6 +90,7 @@ exit $?
             self.events=(d/"events").read_text() if (d/"events").exists() else ""
             self.known=(d/"plain.known").read_text().splitlines()
             self.checks=int((d/'check-count').read_text()) if (d/'check-count').exists() else None
+            self.settle=(d/'settle').read_text().strip() if (d/'settle').exists() else None
             return attempts, delays
 
     def test_ftp_failure_blocks_sd_scan_then_recovers_without_worker_restart(self):
@@ -168,6 +172,23 @@ exit $?
             (1,"card",[a,b],True,0),(2,"card",[a,b],True,0)])
         self.assertEqual(attempts,["0 card "+a,"1 card "+b]);self.assertEqual(delays,[2,2])
         self.assertEqual(self.known,[a,b])
+
+    def test_display_failure_stops_service_after_completing_the_file(self):
+        a,b=row(1),row(2)
+        attempts,delays=self.run_steps([(0,"card",[a,b],True,"dfail"),(1,"card",[a,b],True,0)],expected_exit=91)
+        self.assertEqual(attempts,["0 card "+a])
+        self.assertIn("SERVICE_EXIT display_failed",self.events)
+        self.assertEqual(delays,[])
+
+    def test_drained_queue_after_an_upload_shortens_settle_window(self):
+        a,b=row(1),row(2)
+        for result,expected in ((0,"17"),("skip","1000")):
+            with self.subTest(result=result):
+                self.run_steps([(0,"card",[a],True,"skip"),(10,"card",[b,a],True,result),(11,"card",[b,a],True,0)],
+                               prelude='scan_hold_start() { SETTLE_UNTIL=1000; return 0; }',
+                               epilogue='echo "$SETTLE_UNTIL" > "$D/settle"')
+                # uptime_seconds is stubbed; NOW comes from the idle snapshot step (11 + 6).
+                self.assertEqual(self.settle,expected)
 
     def test_quiet_fallback_does_not_repeat_successful_receipts(self):
         a=row(1)

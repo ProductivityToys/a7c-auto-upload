@@ -2,6 +2,7 @@
 import os
 from pathlib import Path, PurePosixPath
 import plistlib
+import hashlib
 import re
 import secrets
 import shlex
@@ -347,6 +348,9 @@ class SonyUsb:
                 if int(match[1]) != 0:
                     raise InstallerError("机内文件/运行状态操作未完成；未继续下一阶段。")
                 return output
+        # Name the timed-out step for diagnosis: a short fixed-length digest of
+        # the command (never its text, which may carry paths or arguments).
+        self.log("USB 命令超时：步骤 " + hashlib.sha256(command.encode()).hexdigest()[:8] + " · " + str(timeout) + " 秒")
         raise InstallerError("USB 命令超时，完成状态未知；请重新检测，不要直接重装。")
 
     def exists(self, path):
@@ -422,7 +426,7 @@ class SonyUsb:
     def start_service(self):
         state = self.resident_status()
         requested = False
-        deadline = time.monotonic() + 30
+        deadline = time.monotonic() + 60
         detail = '上传进程尚未就绪'
         while True:
             match = re.fullmatch(r'RUNNING:(\d+):(\d+)', state)
@@ -465,12 +469,21 @@ class SonyUsb:
             'if [ ! -f /setting/a7c-display/enabled ]; then echo DISPLAY=disabled; '
             'elif [ -d "$D/display-bootstrap.lock" ]; then echo DISPLAY=starting; '
             'elif $B grep -qx NATIVE_SERVICE_RETIRED "$N/../native-start.log"; then echo DISPLAY=restart; '
+            # A display consumer that could not restore the indicator keeps the
+            # maintenance lock; outside an active upload that is a display fault.
+            'elif [ -d "$N/../maintenance" ] && [ ! -e "$D/display.active" ]; then echo DISPLAY=restart; '
             'else p=$($B cat "$N/im.pid" 2>/dev/null); '
             f'if [ "$($B cat "$N/owner" 2>/dev/null)" = {worker} ] && '
             '[ "$p" = "$($B pidof im.elf)" ] && [ -x "$N/probe" ] && '
-            '$B grep -qx NATIVE_SERVICE_READY "$N/../native-start.log" && '
-            '"$N/probe" --inspect-service "$p" >/dev/null 2>&1; '
-            'then echo DISPLAY=ready; else echo DISPLAY=error; fi; fi')
+            '$B grep -qx NATIVE_SERVICE_READY "$N/../native-start.log"; then '
+            # Reading im.elf maps can block briefly right after service start
+            # or USB mode changes. Bound it on the camera so this USB command
+            # never hangs; a slow read reports "starting" and the caller retries.
+            '"$N/probe" --inspect-service "$p" >/dev/null 2>&1 & c=$!; n=0; '
+            'while kill -0 "$c" 2>/dev/null && [ "$n" -lt 8 ]; do $B sleep 1; n=$((n+1)); done; '
+            'if kill -0 "$c" 2>/dev/null; then kill "$c" 2>/dev/null; wait "$c" 2>/dev/null; echo DISPLAY=starting; '
+            'elif wait "$c"; then echo DISPLAY=ready; else echo DISPLAY=error; fi; '
+            'else echo DISPLAY=error; fi; fi')
         fields = dict(line.split('=',1) for line in out.splitlines() if re.fullmatch(r'(UPLOAD|DISPLAY)=(ready|starting|disabled|error|restart)',line))
         if set(fields) != {'UPLOAD','DISPLAY'}:
             raise InstallerError('健康检查响应不完整，未标为服务正常。')
@@ -498,9 +511,37 @@ class SonyUsb:
     def sync(self):
         self.command("/bin/busybox sync", timeout=30)
 
+    DIAG_RAM = "/setting/a7c-uploader/ram/diag"
+
+    def diag_stop(self, wait=30):
+        """Cooperatively stop only our exact diagnostics listener."""
+        d = self.DIAG_RAM
+        self.command(
+            f'D={d}; B=/bin/busybox; if [ -d "$D/lock" ]; then : > "$D/stop"; p=$($B cat "$D/listener.pid" 2>/dev/null); '
+            'case "$p" in ""|*[!0-9]*) ;; *) if $B grep -q "$D/listener" "/proc/$p/cmdline" 2>/dev/null; then kill -TERM "$p"; fi;; esac; fi; true')
+        deadline = time.monotonic() + wait
+        while self.command(f'if [ -d {d}/lock ]; then echo RUNNING; else echo STOPPED; fi') != 'STOPPED':
+            if time.monotonic() >= deadline:
+                raise InstallerError("无线诊断入口尚未退出，未继续操作。")
+            time.sleep(.5)
+
+    def diag_start(self):
+        """Start the paired listener now; returns its pid or None."""
+        self.command("trap '' HUP; /bin/ash /setting/a7c-diag/start.sh </dev/null >/dev/null 2>&1 &")
+        deadline = time.monotonic() + 10
+        while time.monotonic() < deadline:
+            out = self.command(
+                f'D={self.DIAG_RAM}; p=$(/bin/busybox cat "$D/listener.pid" 2>/dev/null); '
+                'case "$p" in ""|*[!0-9]*) echo NONE;; *) if /bin/busybox grep -q "$D/listener" "/proc/$p/cmdline" 2>/dev/null; then echo PID:$p; else echo NONE; fi;; esac')
+            if out.startswith('PID:'):
+                return int(out[4:])
+            time.sleep(.5)
+        return None
+
     def quiesce(self, retire_display=True):
         ram = "/setting/a7c-uploader/ram"
         self.command(f"if /bin/busybox grep -q '^a7c-upload-ram {ram} tmpfs ' /proc/mounts; then : > {ram}/stop; fi")
+        self.diag_stop()
         deadline = time.monotonic() + 90
         while time.monotonic() < deadline:
             out = self.command(f"if [ ! -d {ram}/lock ] && [ ! -d {ram}/supervisor.lock ] && [ ! -e {ram}/source.fifo ] && [ ! -e {ram}/network.fifo ] && [ ! -d {ram}/display-bootstrap.lock ] && [ ! -d {ram}/plain.bootstrap.lock ]; then echo IDLE; else echo BUSY; fi")

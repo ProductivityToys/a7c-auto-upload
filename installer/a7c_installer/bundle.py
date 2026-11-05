@@ -7,7 +7,7 @@ from .configuration import InstallerError
 
 
 RESOURCE_DIR = Path(__file__).resolve().parent / "resources"
-ROOTS = ("/setting/a7c-uploader/", "/setting/a7c-display/")
+ROOTS = ("/setting/a7c-uploader/", "/setting/a7c-display/", "/setting/a7c-diag/")
 
 
 def sha256(data):

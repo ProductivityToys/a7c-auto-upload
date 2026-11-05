@@ -22,6 +22,19 @@ class FrameObserverTests(unittest.TestCase):
                 self.assertEqual(result.returncode,0,result.stdout+result.stderr)
                 self.assertIn('RECT_UPLOAD_CONTROL_OK',result.stdout)
 
+    def test_upload_redraw_keeps_guardian_heartbeat(self):
+        # Observed on camera: a >3 s redraw start made the active guardian retire
+        # the upload (consumer rc 77). The upload redraw must keep beating.
+        with tempfile.TemporaryDirectory() as tmp:
+            binary=Path(tmp)/'redraw'
+            helper=Path(tmp)/'slow-redraw';helper.write_text('#!/bin/sh\nsleep 3\nexit 0\n');helper.chmod(0o700)
+            subprocess.run(['cc','-Wall','-Wextra','-Werror','-Wno-unused-function','-fsanitize=address,undefined',
+                            str(Path(__file__).with_name('rect_upload_redraw_fixture.c')),'-o',str(binary)],check=True)
+            for args,marker in (([],'REDRAW_HEARTBEAT_OK'),(['lost'],'REDRAW_LOST_OK')):
+                result=subprocess.run([str(binary),*args],cwd=tmp,capture_output=True,text=True,timeout=20)
+                self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+                self.assertIn(marker,result.stdout)
+
     def test_rect_service(self):
         self.run_fixture('rect_service_fixture.c','RECT_SERVICE_OK')
 

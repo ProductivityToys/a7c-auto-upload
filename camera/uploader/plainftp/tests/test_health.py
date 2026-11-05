@@ -43,9 +43,9 @@ log() { echo "$*" >> "$D/events"; }
             files['health_events']=''.join(x+'\n' for x in files['events'].splitlines() if x.startswith('FTP_HEALTH '))
             return files
 
-    def test_failure_marks_once_and_retry_increases_to_ten_minutes(self):
+    def test_failure_marks_once_and_retry_increases_to_two_minutes(self):
         files = self.run_shell('''
-for expected in 20 40 80 160 320 600 600; do
+for expected in 20 40 80 120 120 120 120; do
  if ftp_health_ready; then exit 99; fi
  [ "$FTP_HEALTH_DELAY" = "$expected" ]
 done
