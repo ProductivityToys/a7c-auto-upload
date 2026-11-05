@@ -1,9 +1,11 @@
-# A7C Installer 0.1.0-preview.23
+# A7C Installer 0.1.0-preview.24
 
-相机载荷为 `0.4.1-installer.14-preview`，已验证第一代 **ILCE-7C / 固件 2.00**。
+相机载荷为 `0.4.2-photos.4-preview`，已验证第一代 **ILCE-7C / 固件 2.00**。
 桌面 App 和脚本共用安装核心，不升级固件，不安装 NAS 专用接收器，不处理 Photos 索引。
 
-当前版本已通过 macOS 与 Windows 的 CLI 卸载、全新安装和默认启动验证；Windows 全新安装后的新视频上传、SD 回执和进度显示收尾通过。Windows 打包 App 的连接、已安装识别、FTP 就地测试结果和断开也已验证。本批三个平台包版本统一为 preview.23，构建与实机验收范围见 `validation.json` 和发行目录的 `distributions.json`。
+当前版本已通过 macOS 与 Windows 的 CLI 卸载、全新安装和默认启动验证；Windows 全新安装后的新视频上传、SD 回执和进度显示收尾通过。Windows 打包 App 的连接、已安装识别、FTP 就地测试结果和断开也已验证。本批三个平台包版本统一为 preview.24，构建与实机验收范围见 `validation.json` 和发行目录的 `distributions.json`。
+
+本版新增 JPEG／ARW 图片上传开关、拍照待机支持和按时间排序的混合媒体队列。CLI 可用 `install --reuse --photos --yes` 开启，`--no-photos` 关闭；更新时默认沿用已有选择。
 
 本版包含：
 
@@ -38,8 +40,8 @@ Windows完整解压 `*-windows-x64.zip`，直接双击根目录「A7C 自动上�
    已有配置会自动填入；密码显示「已保存」，留空沿用、填写新密码才替换。首次安装须填写密码。
    读取的是**本上传器**已有配置，不是相机原厂FTP账号；密码不回填到界面、不持久保存到电脑。
 5. 可先点「测试连接」，随后「安装到相机」或「更新配置」。测试仅创建、确认长度、改名、删除小文件。
-6. preview.12安装后默认启动并检查健康状态，通过后拔掉USB、回到视频实时画面即可使用。
-   自动补传未成功的视频，保留卡上原件；之后使用无需电脑常驻。
+6. 按需勾选「同时上传图片（JPEG 和 RAW）」，默认关闭。安装后自动启动并检查健康状态，通过后拔 USB、回到实时拍摄画面即可使用。
+   自动补传未成功的视频及已启用的图片，保留卡上原件；之后使用无需电脑常驻。
 
 开机入口通过动态加载器运行；安装器也能直接启动当前会话的服务，不强行重启。
 更换已加载的显示模块或恢复旧版时，按具体提示断电；普通安装不例行取电池。
@@ -59,7 +61,7 @@ Windows完整解压 `*-windows-x64.zip`，直接双击根目录「A7C 自动上�
 卸载相机服务默认勾选恢复Windows驱动，先退出相机服务会话，再恢复电脑驱动。
 恢复完成后重新插拔USB检查普通导入。更换驱动期间资源管理器可能无法读取相机卷。
 
-本版驱动组件已编译、加载及离线测试；普通/服务模式实际安装和恢复仍需独立相机验收。
+Windows 普通/服务模式驱动的实际安装和恢复已在同机 CLI 验收，范围见 validation.json；本次照片更新不改变驱动实现。
 不因签名策略或组织策略受阻而关闭系统保护。libwdi会生成设备范围的签名证书；
 恢复撤销驱动包，暂不清理Windows证书存储。源码、许可和重建脚本随包提供。
 
@@ -128,7 +130,7 @@ Mac 构建不会产生 Windows exe，也不把 arm64 当作 Intel Mac 通用包�
 重建载荷需要应用归档包、指定 PMCA 上游提交，以及 `camera/display/module/build.py --rect-service-trial --service-lifecycle-ack --ram-module-path /tmp_bt/a7X.so` 生成并通过 ARM 合约测试的显示构建：
 
 ```sh
-python3 packaging/prepare.py --pmca /path/to/Sony-PMCA-RE --local-media /path/to/arm/local-media --plainftp /path/to/arm/plainftp --discovery /path/to/arm/discovery --native-display /path/to/native-service-build
+python3 packaging/prepare.py --pmca /path/to/Sony-PMCA-RE --camera-build /path/to/camera-build --native-display /path/to/native-service-build
 ```
 
 目录边界及实测见[安装器设计](../docs/installer.md)；第三方来源见

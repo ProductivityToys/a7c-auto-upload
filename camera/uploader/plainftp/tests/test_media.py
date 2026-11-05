@@ -61,6 +61,50 @@ class MediaTests(unittest.TestCase):
   changed=self.status.replace(b'D:\\PRIVATE\\M4ROOT\\MEDIAPRO.XML',b'D:\\PRIVATE\\M4ROOT\\CLIP\\C0193.MP4')
   self.assertNotEqual(self.call('info',changed).returncode,0)
   self.assertNotEqual(self.call('info',self.status.replace(b'/dev/mmca',b'/dev/unknown')).returncode,0)
+ def photo_snapshot(self,folders=None):
+  folders=folders or {'100MSDCF':[('DSC00197.JPG',24),('DSC00197.ARW',48)],'101MSDCF':[('DSC00197.JPG',32)]}
+  out='IFSYS dir B:/DCIM\r\n'
+  for folder in folders:out+=f'[IFSYS]-d---- 0 2026-11-05 10:00:00 {folder}\r\n'
+  out+='MWF>\r\n'
+  for folder,files in folders.items():
+   out+=f'IFSYS dir B:/DCIM/{folder}\r\n'
+   for file,size in files:out+=f'[IFSYS]a----- {size} 2026-11-05 10:00:00 {file}\r\n'
+   out+='MWF>\r\n'
+  return out.encode()
+ def test_photos_enumerate_all_dcf_folders_and_keep_raw_jpeg_separate(self):
+  p=self.call('photos',self.photo_snapshot());self.assertEqual(p.returncode,0,p.stderr)
+  rows=p.stdout.decode().splitlines();self.assertEqual(len(rows),3)
+  keys={self.row_key(row).stdout for row in rows};self.assertEqual(len(keys),3)
+  self.assertTrue(all(self.row_key(row).returncode==0 for row in rows))
+  self.assertIn('DCIM/100MSDCF/DSC00197.JPG 24 - 0 2026-11-05T10:00:00 -',rows)
+ def test_photo_identity_binds_directory_size_and_timestamp(self):
+  row='DCIM/100MSDCF/DSC00197.JPG 24 - 0 2026-11-05T10:00:00 -'
+  first=self.row_key(row);self.assertEqual(first.returncode,0)
+  for x in [row.replace('100MSDCF','101MSDCF'),row.replace('.JPG','.ARW'),row.replace(' 24 ',' 25 '),row.replace('T10:00:00','T10:00:01')]:
+   self.assertNotEqual(self.row_key(x).stdout,first.stdout)
+  for x in [row+' extra',row.replace('100MSDCF','../DCIM'),row.replace(' - 0 ',' x 0 '),row.replace('.JPG','.DNG')]:
+   self.assertNotEqual(self.row_key(x).returncode,0)
+ def test_mixed_queue_orders_by_timestamp_not_filename_or_file_type(self):
+  rows=['C9999.MP4 24 C9999M01.XML 1 2026-11-03T10:00:00 2026-11-03T10:00:00',
+        'DCIM/100MSDCF/DSC00001.JPG 24 - 0 2026-11-05T10:00:00 -',
+        'C0001.MP4 24 C0001M01.XML 1 2026-11-04T10:00:00 2026-11-04T10:00:00']
+  with tempfile.TemporaryDirectory() as d:
+   p=pathlib.Path(d)/'rows';p.write_text('\n'.join(rows)+'\n')
+   result=subprocess.run([str(self.bin),'order',str(p)],capture_output=True)
+   self.assertEqual(result.returncode,0,result.stderr)
+   self.assertEqual(result.stdout.decode().splitlines(),[rows[1],rows[2],rows[0]])
+   p.write_text(rows[0]+'\ncorrupt\n')
+   result=subprocess.run([str(self.bin),'order',str(p)],capture_output=True)
+   self.assertNotEqual(result.returncode,0);self.assertFalse(result.stdout)
+ def test_photos_skip_thumbnails_and_other_files_and_require_complete_replies(self):
+  data=self.photo_snapshot({'100MSDCF':[('DSC00197.JPG',24),('DSC00197.THM',8)]})
+  p=self.call('photos',data);self.assertEqual(p.returncode,0,p.stderr);self.assertEqual(len(p.stdout.splitlines()),1)
+  for bad in [data[:data.rfind(b'MWF>')],data.replace(b'DSC00197.JPG',b'DSC00197.JPG\r\n[IFSYS]a----- 24 2026-11-05 10:00:00 DSC00197.JPG')]:
+   p=self.call('photos',bad);self.assertNotEqual(p.returncode,0);self.assertFalse(p.stdout)
+ def test_photo_writers_block_but_readers_do_not(self):
+  writing=self.status.replace(b'D:\\PRIVATE\\M4ROOT\\MEDIAPRO.XML',b'D:\\DCIM\\100MSDCF\\DSC00197.JPG')
+  self.assertNotEqual(self.call('info-photos',writing).returncode,0)
+  self.assertEqual(self.call('info',writing).returncode,0)
  def test_card_identity_change_invalidates_signature(self):
   a=self.call('info',self.status);b=self.call('info',self.status.replace(b'39 01 C3 00 F5 4D 80 38',b'38 01 C3 00 F5 4D 80 38'))
   self.assertEqual(a.returncode,0);self.assertEqual(b.returncode,0);self.assertNotEqual(a.stdout,b.stdout)

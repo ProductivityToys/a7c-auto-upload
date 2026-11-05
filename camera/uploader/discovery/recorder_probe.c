@@ -98,7 +98,7 @@ int main(int argc,char **argv){
    for(unsigned i=0;i<4;i++){
     unsigned char*p=signature+i*28;if(!p[4])continue;
     /* Unknown layouts fail back to ordinary polling, never an idle proof. */
-    if(p[4]!=1||le(p)!=i||le(p+8)!=256||le(p+12)>12)goto done;
+    if(p[4]!=1||le(p)!=i||(le(p+8)!=256&&le(p+8)!=1)||le(p+12)>12)goto done;
     if(le(p+12)!=1||le(p+16)||le(p+20))busy=1;
    }
    if(busy||(have&&!equal(signature,previous,sizeof signature)))activity=1;

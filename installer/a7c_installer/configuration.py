@@ -15,8 +15,11 @@ class FtpSettings:
     username: str
     directory: str
     password: str = field(repr=False, compare=False)
+    photos: bool = False
 
     def validate_target(self):
+        if not isinstance(self.photos, bool):
+            raise InstallerError("图片上传开关须为布尔值。")
         try:
             address = ipaddress.IPv4Address(self.host)
             if address.is_unspecified or address.is_multicast or int(address) == 0xffffffff:
@@ -43,7 +46,9 @@ class FtpSettings:
     def camera_files(self):
         self.validate()
         text = f"a7c-plainftp-v1\n{self.host}\n{self.port}\n{self.username}\n{self.directory}\n"
+        if self.photos:
+            text = text.replace("a7c-plainftp-v1\n", "a7c-plainftp-v2\n", 1) + "1\n"
         return {"config": text.encode("ascii"), "password": self.password.encode("utf-8") + b"\n"}
 
     def public(self):
-        return {"host": self.host, "port": self.port, "username": self.username, "directory": self.directory}
+        return {"host": self.host, "port": self.port, "username": self.username, "directory": self.directory, "photos": self.photos}

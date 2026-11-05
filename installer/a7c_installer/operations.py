@@ -35,9 +35,12 @@ def parse_settings(camera):
         raise InstallerError("未发现本上传器的现有 FTP 配置，请填写新配置。")
     try:
         lines = data.decode("ascii").splitlines()
-        if len(lines) != 5 or lines[0] != "a7c-plainftp-v1" or not secret.endswith(b"\n"):
+        v1 = len(lines) == 5 and lines[0] == "a7c-plainftp-v1"
+        v2 = len(lines) == 6 and lines[0] == "a7c-plainftp-v2" and lines[5] in ("0", "1")
+        if not (v1 or v2) or not secret.endswith(b"\n"):
             raise ValueError()
-        return FtpSettings(lines[1], int(lines[2]), lines[3], lines[4], secret[:-1].decode("utf-8")).validate()
+        return FtpSettings(lines[1], int(lines[2]), lines[3], lines[4], secret[:-1].decode("utf-8"),
+                           photos=v2 and lines[5] == "1").validate()
     except (ValueError, UnicodeError):
         raise InstallerError("现有 FTP 配置格式异常；请填写新配置。") from None
 
@@ -181,7 +184,7 @@ class Installer:
         self.log("已暂停自启，等待现有上传与显示合作退出")
         self.camera.quiesce(retire_display=retire_display)
 
-    def install(self, settings=None, reuse=False, display=True, preserve_password=False, expected_config=None):
+    def install(self, settings=None, reuse=False, display=True, preserve_password=False, expected_config=None, photos=None):
         self.verify_firmware()
         self.ownership()
         if self.camera.exists(PENDING):
@@ -190,6 +193,10 @@ class Installer:
         if settings is None:
             raise InstallerError("请填写 FTP 配置，或选择沿用本上传器已有配置。")
         settings = self.resolve_settings(settings, preserve_password, expected_config)
+        if photos is not None:
+            settings = replace(settings, photos=photos).validate()
+        if settings.photos and 'photos-jpeg-arw' not in self.bundle.manifest.get('features', []):
+            raise InstallerError('当前相机载荷不含图片上传，请使用图片支持版本的完整安装包。')
         self.log("测试 FTP 目标目录：创建、长度确认并删除小测试文件")
         self.ftp_test(settings)
         self.prepare_directories()

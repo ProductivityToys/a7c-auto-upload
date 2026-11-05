@@ -168,6 +168,15 @@ class Window(QMainWindow):
         note.setWordWrap(True)
         form.addRow(note)
         setup.addWidget(ftp)
+        self.photos = QCheckBox("同时上传图片（JPEG 和 RAW）")
+        self.photos.setToolTip("补传卡上已有图片并上传新增图片。请避免同时启用原厂照片自动传输。")
+        self.photos.setVisible('photos-jpeg-arw' in Bundle().manifest.get('features', []))
+        setup.addWidget(self.photos)
+        photos_note = QLabel("如果照片使用相机自带的 FTP 上传，可保持关闭；开启后，本程序也会上传 JPEG 和 RAW。")
+        photos_note.setObjectName('muted')
+        photos_note.setWordWrap(True)
+        photos_note.setVisible('photos-jpeg-arw' in Bundle().manifest.get('features', []))
+        setup.addWidget(photos_note)
         self.display = QCheckBox("在相机上显示上传状态和进度")
         self.display.setChecked(True)
         setup.addWidget(self.display)
@@ -292,7 +301,7 @@ class Window(QMainWindow):
         return {'disconnected': True}
 
     def set_fields_enabled(self, enabled):
-        for field in (self.host, self.port, self.username, self.password, self.directory, self.test_button, self.display):
+        for field in (self.host, self.port, self.username, self.password, self.directory, self.test_button, self.display, self.photos):
             field.setEnabled(enabled)
 
     def clear_test_result(self):
@@ -307,6 +316,7 @@ class Window(QMainWindow):
     def apply_saved_config(self, config):
         self.clear_test_result()
         self.loaded_ftp = dict(config) if config else None
+        self.photos.setChecked(bool(config and config.get('photos', False)))
         if config:
             self.host.setText(config['host'])
             self.port.setValue(config['port'])
@@ -325,7 +335,7 @@ class Window(QMainWindow):
 
     def settings(self):
         value = FtpSettings(self.host.text().strip(), self.port.value(), self.username.text(),
-                            self.directory.text(), self.password.text())
+                            self.directory.text(), self.password.text(), photos=self.photos.isChecked())
         if self.loaded_ftp and not value.password:
             return value.validate_target()
         return value.validate()

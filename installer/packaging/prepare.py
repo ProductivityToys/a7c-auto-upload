@@ -20,9 +20,7 @@ def digest(data):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--pmca", type=Path, required=True)
-    parser.add_argument("--local-media", type=Path, required=True, help="ARM build with FAT long-name receipt lookup fix")
-    parser.add_argument("--plainftp", type=Path, required=True, help="ARM FTP client with read-only connection check")
-    parser.add_argument("--discovery", type=Path, required=True, help="ARM recorder hint with suspend/resume detection")
+    parser.add_argument("--camera-build", type=Path, required=True, help="maintenance/build_camera.py --experimental-ftp output")
     parser.add_argument("--native-display", type=Path, required=True, help="Verified single/dual-buffer service build at /tmp_bt/a7X.so")
     args = parser.parse_args()
     actual = subprocess.check_output(["git", "-C", str(args.pmca), "rev-parse", "HEAD"], text=True).strip()
@@ -46,15 +44,24 @@ def main():
         for name in ("native-probe", "native-module.so", "native-start.sh", "consumer.sh", "native.sha256", "redraw"):
             payload["/setting/a7c-display/" + name] = read("payload/display/" + name)
         dependencies = dict(line.split()[::-1] for line in read("payload/display/native.sha256").decode().splitlines())
-    media = args.local_media.read_bytes()
-    if not media.startswith(b"\x7fELF\x01\x01") or media[18:20] != b"\x28\x00":
-        raise ValueError("local-media must be an ARM little-endian ELF32 build")
-    payload["/setting/a7c-uploader/plainftp/local-media"] = media
-    for name, path in (("plainftp", args.plainftp), ("discovery", args.discovery)):
-        value = path.read_bytes()
-        if not value.startswith(b"\x7fELF\x01\x01") or value[18:20] != b"\x28\x00":
-            raise ValueError(name + " must be an ARM little-endian ELF32 build")
+    built = json.loads((args.camera_build / 'build-manifest.json').read_text())
+    for name, relative in (
+        ('monitor', 'uploader/monitor'), ('lease', 'uploader/lease'),
+        ('relay', 'experimental/relay'), ('plainftp', 'experimental/plainftp'),
+        ('local-media', 'experimental/local-media'), ('sd-monitor', 'experimental/sd-monitor'),
+        ('discovery', 'experimental/discovery'), ('plain-runtime.sh', 'experimental/plain-runtime.sh'),
+        ('plain-worker.sh', 'experimental/plain-worker.sh'),
+    ):
+        value = (args.camera_build / relative).read_bytes()
+        if digest(value) != built['files'][relative]['sha256']:
+            raise ValueError('Camera build differs: ' + relative)
+        if not name.endswith('.sh') and (not value.startswith(b"\x7fELF\x01\x01") or value[18:20] != b"\x28\x00"):
+            raise ValueError(name + ' must be an ARM little-endian ELF32 build')
         payload["/setting/a7c-uploader/plainftp/" + name] = value
+    boot = (args.camera_build / 'experimental/plain-boot.sh').read_bytes()
+    if digest(boot) != built['files']['experimental/plain-boot.sh']['sha256']:
+        raise ValueError('Camera boot build differs')
+    payload['/setting/a7c-uploader/worker.sh'] = boot
     native = json.loads((args.native_display / "manifest.json").read_text())
     if (not native.get("rect_service_trial") or not native.get("service_lifecycle_ack")
             or native["path"] != "/tmp_bt/a7X.so"):
@@ -66,7 +73,6 @@ def main():
         payload["/setting/a7c-display/" + target] = value
     payload["/setting/a7c-display/native-start.sh"] = (APP / "camera/display/upload/native-start.sh").read_bytes().replace(b"M=/tmp_bt/a70.so\n", b"M=/tmp_bt/a7X.so\n")
     plain = "/setting/a7c-uploader/plainftp/"
-    payload[plain + "plain-worker.sh"] = (APP / "camera/uploader/plainftp/worker.sh").read_bytes()
     members = [line.split()[1] for line in payload[plain + "manifest"].decode().splitlines()]
     payload[plain + "manifest"] = "".join(digest(payload[plain + n]) + " " + n + "\n" for n in members).encode()
     with zipfile.ZipFile(root / "0.1.0-baseline.1/a7c-nas-uploader-0.1.0-baseline.1-apps-layout.2.zip") as archive:
@@ -82,7 +88,7 @@ def main():
     members = ["native-probe", "native-module.so", "native-start.sh", "consumer.sh", "native.sha256", "redraw"]
     payload[prefix + "manifest"] = "".join(digest(payload[prefix + n]) + " " + n + "\n" for n in members).encode()
     info = {
-        "format": 1, "payload_version": "0.4.1-installer.14-preview",
+        "format": 1, "payload_version": "0.4.2-photos.4-preview", "features": ["photos-jpeg-arw"],
         "firmware": {"model": "ILCE-7C", "version": "2.00", "version_txt": "39119_05.2021111501", "dependencies": dependencies},
         "files": {},
     }

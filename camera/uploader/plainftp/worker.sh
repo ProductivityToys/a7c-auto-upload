@@ -8,14 +8,16 @@ D=/setting/a7c-uploader/ram
 umask 077
 . "$D/plain-runtime.sh" || exit 90
 HOST=$1; PORT=$2; USER=$3; ROOT=$4
-[ "$#" = 4 ] || exit 64
+PHOTOS=${5:-0}
+[ "$#" = 4 ] || [ "$#" = 5 ] || exit 64
+case "$PHOTOS" in 0|1) ;; *) exit 64;; esac
 $B grep -q '^a7c-upload-ram /setting/a7c-uploader/ram tmpfs ' /proc/mounts || exit 90
 $B mkdir "$D/lock" || exit 90
 echo "$$" > "$D/plain.worker.pid"
 IFS= read -r FTP_PASSWORD || { $B rmdir "$D/lock"; exit 64; }
 [ -n "$FTP_PASSWORD" ] || { $B rmdir "$D/lock"; exit 64; }
 exec 0</dev/null
-ftp() { printf '%s\n' "$FTP_PASSWORD" | "$D/plainftp" "$1" "$HOST" "$PORT" "$USER" "$ROOT" "$IDENTITY" "$SIZE" "$2" "$LIMIT"; }
+ftp() { printf '%s\n' "$FTP_PASSWORD" | "$D/plainftp" "$1" "$HOST" "$PORT" "$USER" "$ROOT" "$IDENTITY" "$SIZE" "$2" "$LIMIT" ${MEDIA_EXT:+$MEDIA_EXT}; }
 plain_display_begin() {
  # Optional consumer, installed separately in RAM. No helper means no display
  # process, marker, or extra polling. No media identity or credentials exposed.
@@ -93,10 +95,22 @@ snapshot_fresh() {
 }
 directory_publish() {
  $D/local-media newest "$LETTER" "$D/dir" > "$D/plain.entries.next" || { cache_invalidate; return 1; }
+ if [ "${PHOTOS:-0}" = 1 ]; then
+  $D/local-media photos "$LETTER" "$D/dir" >> "$D/plain.entries.next" || { cache_invalidate; return 1; }
+  $D/local-media order "$D/plain.entries.next" > "$D/plain.entries.sorted" &&
+  $B mv "$D/plain.entries.sorted" "$D/plain.entries.next" || { cache_invalidate; return 1; }
+ fi
  if [ "$CARD" != "$SNAPSHOT_CARD" ] || ! $B cmp "$D/plain.entries.next" "$D/plain.entries" > /dev/null 2>&1; then ROOT_AT=; fi
  $B mv "$D/plain.entries.next" "$D/plain.entries" || { cache_invalidate; return 1; }
  uptime_seconds || { cache_invalidate; return 1; }
  SNAPSHOT_AT=$NOW; SNAPSHOT_CARD=$CARD; SNAPSHOT_LETTER=$LETTER
+}
+still_rec_standby() {
+ local still_rec
+ still_rec=$($B sed 's/\r//g; /^$/d; /^MPR Debug RecInfo$/d' "$1") || return 1
+ [ "$still_rec" = '[MprMcmd][RecInfo] =====
+ + line[0], contentType:Still(JPG), RecCnt1:0, RecCnt2:0, RecStatus:REC_STATE_STANDBY
+MON>' ]
 }
 recording_idle() {
  FULL_STATE_USED=0
@@ -106,11 +120,14 @@ recording_idle() {
  "$D/monitor" recording-bundle > "$D/recording.bundle" 2> "$D/query.err" || return 1
  $B sed -n '/^A7C_REC_PART_0_BEGIN$/,/^A7C_REC_PART_0_END$/p' "$D/recording.bundle" | $B sed '1d; $d' > "$D/rec" || return 1
  if [ "$($B grep -c 'contentType:Movie(XAVC), RecCnt1:0, RecCnt2:0, RecStatus:REC_STATE_STANDBY' "$D/rec")" = 2 ]; then return 0; fi
- empty_rec "$D/rec" || return 2
+ local still_idle=0
+ if still_rec_standby "$D/rec"; then still_idle=1; else empty_rec "$D/rec" || return 2; fi
  $B sed -n '/^A7C_REC_PART_1_BEGIN$/,/^A7C_REC_PART_1_END$/p' "$D/recording.bundle" | $B sed '1d; $d' > "$D/full-state.txt" || return 1
- full_state_idle "$D/full-state.txt" || return 2
+ if [ "$still_idle" = 1 ]; then full_state_idle "$D/full-state.txt" still || return 2
+ else full_state_idle "$D/full-state.txt" || return 2; fi
  $B sed -n '/^A7C_REC_PART_2_BEGIN$/,/^A7C_REC_PART_2_END$/p' "$D/recording.bundle" | $B sed '1d; $d' > "$D/rec-recheck" || return 1
- empty_rec "$D/rec-recheck" || return 2
+ if [ "$still_idle" = 1 ]; then still_rec_standby "$D/rec-recheck" || return 2
+ else empty_rec "$D/rec-recheck" || return 2; fi
  FULL_STATE_USED=1
 }
 media_gate() {
@@ -120,14 +137,18 @@ media_gate() {
  filesystem_bind
 }
 filesystem_idle() {
- CARD=$(timed fs_idle "$D/local-media" info "$LETTER" "$D/info") || { cache_invalidate; return 1; }
+ local info_mode=info
+ [ "${PHOTOS:-0}" != 1 ] || info_mode=info-photos
+ CARD=$(timed fs_idle "$D/local-media" "$info_mode" "$LETTER" "$D/info") || { cache_invalidate; return 1; }
  # This is a read-only gate. Actual transfer and SD writes use media_gate.
  if $B grep -Fq ':\PRIVATE\M4ROOT\CLIP\' "$D/info"; then cache_invalidate; return 1; fi
 }
 filesystem_bind() {
  # One native frontend, three sequential replies: drive -> directory -> info.
  # Both parsers select their own completed reply from the bounded transcript.
- timed filesystem "$D/monitor" filesystem > "$D/filesystem.snapshot" 2> "$D/query.err" || { cache_invalidate; return 1; }
+ local filesystem_mode=filesystem
+ [ "${PHOTOS:-0}" != 1 ] || filesystem_mode=filesystem-photos
+ timed filesystem "$D/monitor" "$filesystem_mode" > "$D/filesystem.snapshot" 2> "$D/query.err" || { cache_invalidate; return 1; }
  LETTER=$($B sed -n "s/\r//g; s/^driveLetter = '\([A-Z]\)'$/\1/p" "$D/filesystem.snapshot" | $B tail -1)
  case "$LETTER" in [A-Z]) ;; *) cache_invalidate; return 1;; esac
  $B cp "$D/filesystem.snapshot" "$D/info" && $B cp "$D/filesystem.snapshot" "$D/dir" || { cache_invalidate; return 1; }
@@ -268,7 +289,7 @@ receipt_load() {
    *) return 90;;
   esac
  done
- $D/plainftp match-row "$HOST" "$PORT" "$USER" "$ROOT" "$IDENTITY" "$SIZE" "$SLOT_A" "$SLOT_B"
+ $D/plainftp match-row "$HOST" "$PORT" "$USER" "$ROOT" "$IDENTITY" "$SIZE" "$SLOT_A" "$SLOT_B" ${MEDIA_EXT:+$MEDIA_EXT}
 }
 receipt_store() {
  # Never overwrite an occupied/colliding slot, including a damaged one.
@@ -329,7 +350,8 @@ plain_transfer_body() {
 plain_attempt() {
  # Directory-key/receipt checks need no per-file upload power lease.
  # The full source gate still runs after acquiring the actual upload lease.
- ATTEMPT_SKIPPED=0; lease_pid=; FTP_TRANSPORT_FAILED=0
+ ATTEMPT_SKIPPED=0; lease_pid=; FTP_TRANSPORT_FAILED=0; MEDIA_EXT=
+ case "$VIDEO" in DCIM/*.JPG) MEDIA_EXT=JPG;; DCIM/*.ARW) MEDIA_EXT=ARW;; esac
  # 75 is pre-transfer source unavailability, not a failed FTP connection.
  result=75
  if source_checked; then
@@ -501,8 +523,13 @@ discovery_wait() {
       FTP_CHECK_DUE=1; FTP_CHECK_BACKOFF=10
       cache_invalidate; previous_card=none; QUEUE_PENDING=1; return 0;;
   20) return 0;;
-  *) # Disable the hint for this worker session; ordinary full scans recover.
-     DISCOVERY_OFF=1; log "DISCOVERY_FALLBACK rc=$discovery_rc"
+  *) # Still capture can temporarily change the recorder layout. Retry this
+     # read-only hint next cycle so idle photos do not force permanent polling.
+     if [ "${PHOTOS:-0}" = 1 ] && [ "$discovery_rc" = 95 ]; then
+      log 'DISCOVERY_RETRY photo_state'
+     else
+      DISCOVERY_OFF=1; log "DISCOVERY_FALLBACK rc=$discovery_rc"
+     fi
      cache_invalidate; previous_card=none; QUEUE_PENDING=1
      if [ "$delay" = 2 ]; then $B sleep 2; else $B sleep "$wait_left"; fi
      return 0;;

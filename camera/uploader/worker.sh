@@ -85,6 +85,12 @@ Command Status : Ready
 + m_waitTime : 500[ms]
 MON>'
  FULL_NORMAL=$($B sed 's/\r//g; s/[[:blank:]][[:blank:]]*/ /g; s/^ //; s/ $//; /^$/d; s/active (at 0x[0-9A-Fa-f][0-9A-Fa-f]*)/active/g' "$1") || return 1
+ if [ "${2:-}" = still ]; then
+  # Only used between two exact still STANDBY/zero-count snapshots.
+  printf '%s\n' "$FULL_NORMAL" | $B grep -q -x '+- Status : STAT_IDLE' || return 1
+  printf '%s\n' "$FULL_NORMAL" | $B grep -q -x '+-StillRecorder : active' || return 1
+  FULL_NORMAL=$(printf '%s\n' "$FULL_NORMAL" | $B sed 's/^+-StillRecorder : active$/+-StillRecorder : none/') || return 1
+ fi
  [ "$(printf '%s\n' "$FULL_NORMAL" | $B grep -c -x '= = = = = MprIf Debug Information = = = = =')" = 1 ] || return 1
  [ "$(printf '%s\n' "$FULL_NORMAL" | $B grep -c -x 'l ProductName : ILCE-7C')" = 1 ] || return 1
  if printf '%s\n' "$FULL_NORMAL" | $B grep -E '(ILLEGAL|FAILURE|ERROR) : true|OVERFLOW|\[ERR\]|\[ERROR\]|Failed to|Illegal ' > /dev/null; then return 1; fi

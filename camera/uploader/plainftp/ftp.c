@@ -131,6 +131,10 @@ static int upload(int fd,const char*ip,const char*part,const char*final,u64 expe
 }
 int main(int argc,char**v){
  if(argc<6)return 64;u64 port;
+ const char *extension="MP4";
+ if(argc==11&&(!strcmp(v[1],"put")||!strcmp(v[1],"commit")||!strcmp(v[1],"match")||!strcmp(v[1],"match-row"))){
+  extension=v[10];if(strcmp(extension,"JPG")&&strcmp(extension,"ARW"))return 64;argc=10;
+ }
  if(!safe(v[2],15)||inet_addr(v[2])==0xffffffffU||!decimal(v[3],&port)||!port||port>65535||v[3][0]=='0'||!safe(v[4],128)||!safe(v[5],400)||v[5][0]!='/'||strstr(v[5],"/../")||strstr(v[5],"/./")||strstr(v[5],"//"))return 64;
  if(argc==6&&!strcmp(v[1],"namespace")){unsigned char id[32];namespace_id(v,id);const char h[]="0123456789abcdef";char out[65];for(unsigned i=0;i<32;i++){out[i*2]=h[id[i]>>4];out[i*2+1]=h[id[i]&15];}out[64]='\n';return write(1,out,65)==65?0:74;}
  if(argc==6&&(!strcmp(v[1],"check")||!strcmp(v[1],"check-fast"))){
@@ -156,7 +160,7 @@ int main(int argc,char**v){
  if((argc==10&&(!strcmp(v[1],"match")||!strcmp(v[1],"match-row")))||(argc==11&&!strcmp(v[1],"rekey"))){
   A7cReceipt expected;memset(&expected,0,sizeof(expected));
   if(!hex(v[6],expected.identity)||!decimal(v[7],&expected.bytes)||!expected.bytes)return 64;
-  namespace_id(v,expected.destination);char final[80];snprintf(final,sizeof(final),"%s.MP4",v[6]);digest((const unsigned char*)final,strlen(final),expected.remote_path);
+  namespace_id(v,expected.destination);char final[80];snprintf(final,sizeof(final),"%s.%s",v[6],extension);digest((const unsigned char*)final,strlen(final),expected.remote_path);
   unsigned char data[2][513];A7cReceiptSlot slots[2];memset(slots,0,sizeof(slots));
   for(unsigned i=0;i<2;i++){if(!strcmp(v[8+i],"-"))continue;int fd=open(v[8+i],O_RDONLY);if(fd<0)return 90;unsigned n=0;while(n<513){int got=read(fd,data[i]+n,513-n);if(got<0&&errno==EINTR)continue;if(got<0){close(fd);return 90;}if(!got)break;n+=got;}close(fd);slots[i].data=data[i];slots[i].length=n;slots[i].state=A7C_SLOT_READ;}
   /* A migrated receipt keeps its actual prior remote path. Match its full
@@ -181,7 +185,7 @@ int main(int argc,char**v){
  if(!hex(v[6],receipt.identity)||!decimal(v[7],&receipt.bytes)||!receipt.bytes||receipt.bytes>274877906944ULL||!decimal(v[9],&seconds)||seconds<1||seconds>86400)return 64;
  if(commit&&strcmp(v[8],"-"))return 64;
  owner=getppid();began=millis();limit=(u32)seconds*1000;signal(SIGTERM,stop);signal(SIGINT,stop);signal(SIGPIPE,SIG_IGN);
- char final[80],part[80];snprintf(final,sizeof(final),"%s.MP4",v[6]);snprintf(part,sizeof(part),".%s.part",v[6]);
+ char final[80],part[80];snprintf(final,sizeof(final),"%s.%s",v[6],extension);snprintf(part,sizeof(part),".%s.part",v[6]);
  int fd=login(v,port);if(fd<0)return 75;
  if(put){int rc=upload(fd,v[2],part,final,receipt.bytes,v[8]);close(fd);return rc;}
  u64 size=0;int exists=size_of(fd,final,&size);int rc=75;

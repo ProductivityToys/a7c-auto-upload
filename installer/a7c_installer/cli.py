@@ -18,6 +18,10 @@ def main(argv=None):
     parser.add_argument("--directory", default="/")
     parser.add_argument("--reuse", action="store_true", help="沿用本上传器已有的 FTP 配置")
     parser.add_argument("--no-display", action="store_true")
+    photos = parser.add_mutually_exclusive_group()
+    photos.add_argument("--photos", dest="photos", action="store_true", help="同时上传 DCIM 中的 JPEG 和 ARW 图片")
+    photos.add_argument("--no-photos", dest="photos", action="store_false", help="仅上传视频，照片继续使用原厂 FTP")
+    parser.set_defaults(photos=None)
     parser.add_argument("--yes", action="store_true", help="执行安装/配置/卸载/恢复")
     parser.add_argument("--full", action="store_true", help="inspect 时验证原厂文件依赖")
     parser.add_argument('--keep-driver', action='store_true', help='Windows 卸载相机服务后保留电脑驱动')
@@ -55,7 +59,7 @@ def main(argv=None):
                     elif args.action == "diagnose":
                         result = {"inspection": engine.inspect(), "runtime": camera.runtime_report()}
                     elif args.action in ("install", "configure"):
-                        result = engine.install(settings, args.reuse, not args.no_display)
+                        result = engine.install(settings, args.reuse, not args.no_display, photos=args.photos)
                     elif args.action == "uninstall":
                         result = engine.uninstall()
                     elif args.action == "start":

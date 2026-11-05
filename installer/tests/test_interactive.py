@@ -38,12 +38,21 @@ class InteractiveTests(unittest.TestCase):
         settings, preserve = interactive.prompt_settings(SETTINGS.public(), ask=lambda _: '', secret=lambda _: 'replacement-secret')
         self.assertFalse(preserve)
         self.assertNotIn('replacement-secret', repr(settings))
+    def test_photo_choice_can_enable_disable_or_preserve_saved_setting(self):
+        from dataclasses import replace
+        for saved, answer, expected in [(SETTINGS.public(), 'y', True),
+                                         (replace(SETTINGS, photos=True).public(), '', True),
+                                         (replace(SETTINGS, photos=True).public(), 'n', False)]:
+            answers = iter(['', '', '', '', answer])
+            settings, preserve = interactive.prompt_settings(saved, ask=lambda _: next(answers), secret=lambda _: '')
+            self.assertEqual(settings.photos, expected)
+            self.assertTrue(preserve)
 
     def test_connect_then_update_reuses_secret_without_echo(self):
         camera=MemoryCamera(Bundle())
         Installer(camera, ftp_test=lambda _: None).install(SETTINGS)
         session=MagicMock(); session.__enter__.return_value=camera
-        answers=iter(['1','2','','','','','0'])
+        answers=iter(['1','2','','','','','','0'])
         output=io.StringIO()
         def engine(cam,bundle,log):
             return Installer(cam,bundle,log,ftp_test=lambda _: None)

@@ -74,6 +74,26 @@ class RecorderProbeTests(unittest.TestCase):
   self.movie(3,1)
   p=subprocess.run([str(self.binary),'162','wait','1','7'],capture_output=True,text=True,timeout=3)
   self.assertEqual(p.returncode,11);self.assertIn('WAIT_DONE rc=11',p.stdout)
+ def still(self,state,count=0):
+  self.movie(state,count)
+  with (self.pid/'mem').open('r+b') as f:
+   f.seek(self.core+0x16b4);f.write(struct.pack('<I',1))
+   f.seek(self.core+0x16ac+0x108+4);f.write(b'\0')
+ def test_still_standby_is_quiet_and_active_still_is_busy(self):
+  self.still(1)
+  p=subprocess.run([str(self.binary),'162','wait','1','7'],capture_output=True,text=True,timeout=3)
+  self.assertEqual(p.returncode,0,p.stderr)
+  self.still(3,1)
+  p=subprocess.run([str(self.binary),'162','wait','1','7'],capture_output=True,text=True,timeout=3)
+  self.assertEqual(p.returncode,11,p.stderr)
+ def test_still_completion_wakes_scan_without_treating_busy_as_idle(self):
+  self.still(3,1)
+  p=subprocess.Popen([str(self.binary),'162','wait','5','7'],stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
+  try:
+   time.sleep(1.2);self.assertIsNone(p.poll());self.still(1)
+   out,err=p.communicate(timeout=3);self.assertEqual(p.returncode,10,err)
+  finally:
+   if p.poll() is None:p.kill();p.communicate()
  def test_wait_does_not_wake_at_record_start_but_wakes_after_finish(self):
   self.movie(1)
   p=subprocess.Popen([str(self.binary),'162','wait','5','7'],stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)

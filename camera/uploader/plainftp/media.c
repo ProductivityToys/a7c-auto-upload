@@ -6,6 +6,7 @@
 extern char *strchr(const char*,int),*strstr(const char*,const char*);extern int sscanf(const char*,const char*,...),strncmp(const char*,const char*,unsigned),memcmp(const void*,const void*,unsigned);extern void *memcpy(void*,const void*,unsigned);
 extern void qsort(void*,unsigned,unsigned,int (*)(const void*,const void*));
 #endif
+#include "../photo_path.h"
 static char buf[262145],xml[16385];
 static int load(const char*path,char*b,unsigned cap){int fd=open(path,O_RDONLY);if(fd<0)return -1;unsigned n=0;for(;;){int r=read(fd,b+n,cap-n);if(r<0&&errno==EINTR)continue;if(r<0||n==cap){close(fd);return -1;}if(!r)break;n+=r;}close(fd);for(unsigned i=0;i<n;i++)if(!b[i])return -1;b[n]=0;return n;}
 static void hash(const char*b,unsigned n,char*out){Sha s;sha_init(&s);sha_update(&s,(const unsigned char*)b,n);sha_final(&s,out);}
@@ -49,7 +50,7 @@ static int directory(const char*drive,const char*path,int newest){
   char out[150];int n=snprintf(out,sizeof(out),"C%04u.MP4 %llu C%04uM01.XML %llu %s %s\n",i,v->size,i,x->size,v->stamp,x->stamp);if(write(1,out,n)!=n)return 74;
  }return 0;
 }
-static int info(const char*drive,const char*path){
+static int info(const char*drive,const char*path,int photos){
  if(strlen(drive)!=1||load(path,buf,sizeof(buf)-1)<0)return 90;char*p=frame("IFSYS info");if(!p)return 90;
  const char*banner="******** Fsys - IFSYS   VER:109 CATEGORY:MAIN TYPE:COM CXD:COM ********";
  char*first=strstr(p,banner);char*second=first?strstr(first+strlen(banner),banner):0;if(!second||strstr(second+strlen(banner),banner))return 90;
@@ -63,11 +64,11 @@ static int info(const char*drive,const char*path){
   }*end=save;q=end;
  }
  if(sd!=1)return 90;
- char prefix[40];snprintf(prefix,sizeof(prefix),"\"%c:\\PRIVATE\\M4ROOT\\CLIP\\",internal);
+ char prefix[40],photo_prefix[20];snprintf(prefix,sizeof(prefix),"\"%c:\\PRIVATE\\M4ROOT\\CLIP\\",internal);snprintf(photo_prefix,sizeof photo_prefix,"\"%c:\\DCIM\\",internal);
  for(char*q=p;(q=strstr(q,"open file info :"));){char*end=strstr(q+1,"open file info :");if(!end)end=second;if(end<=q)return 90;char save=*end;*end=0;
   char*s=strstr(q,"  status            = "),*n=strstr(q,"  file & ext name   = ");if(!s||!n){*end=save;return 90;}
   char*e=strchr(s,'\n');if(!e){*end=save;return 90;}char c=*e;*e=0;int writing=strstr(s,"write")!=0;*e=c;
-  if(writing&&strstr(n,prefix)){*end=save;return 90;}*end=save;q=end;
+  if(writing&&(strstr(n,prefix)||(photos&&strstr(n,photo_prefix)))){*end=save;return 90;}*end=save;q=end;
  }
  char digest[65];hash(card,strlen(card),digest);digest[64]='\n';return write(1,digest,65)==65?0:74;
 }
@@ -108,13 +109,85 @@ static int metadata(const char*path,const char*size){
  * listing row; they are not identity inputs and the XML file is never opened. */
 static int row_identity(const char *row){
  char video[32],size[32],sidecar[32],xsize[32],stamp[32],xstamp[32];int end=0;u64 bytes;
- if(sscanf(row,"%31s %31s %31s %31s %31s %31s%n",video,size,sidecar,xsize,stamp,xstamp,&end)!=6||!end||row[end]||name(video)!=1||!dec(size,&bytes)||!bytes||bytes>274877906944ULL)return 90;
+ if(sscanf(row,"%31s %31s %31s %31s %31s %31s%n",video,size,sidecar,xsize,stamp,xstamp,&end)!=6||!end||row[end]||(name(video)!=1&&!a7c_photo_path(video))||!dec(size,&bytes)||!bytes||bytes>274877906944ULL)return 90;
+ if(a7c_photo_path(video)&&(strcmp(sidecar,"-")||strcmp(xsize,"0")||strcmp(xstamp,"-")))return 90;
  if(strlen(stamp)!=19)return 90;
  for(unsigned i=0;i<19;i++){
   char want=i==4||i==7?'-':i==10?'T':i==13||i==16?':':0;
   if(want?stamp[i]!=want:(stamp[i]<'0'||stamp[i]>'9'))return 90;
  }
  char key[120],out[65];int n=snprintf(key,sizeof key,"a7c-file-v1:%s:%llu:%s",video,bytes,stamp);hash(key,n,out);out[64]='\n';return write(1,out,65)==65?0:74;
+}
+struct Photo {char path[27],stamp[20];u64 bytes;};
+static struct Photo photos[4000];
+static int photo_compare(const void *a,const void *b){return strcmp(((const struct Photo*)a)->path,((const struct Photo*)b)->path);}
+/* Exact native command line prevents a DCIM root from matching a subfolder.
+ * Restore the reply boundary before looking up the next completed reply. */
+static char *photo_frame(const char *marker,char **end){
+ char *p=last(buf,marker);if(!p)return 0;p+=strlen(marker);*end=strstr(p,"MWF>");if(!*end)return 0;**end=0;
+ if(strstr(p,"OVERFLOW")||strstr(p,"[ERR")||strstr(p,"Failed to")||strstr(p,"Illegal ")||strstr(p,"Can't open")){**end='M';return 0;}
+ return p;
+}
+static int photo_directory(const char *drive,const char *path){
+ if(strlen(drive)!=1||*drive<'A'||*drive>'Z'||load(path,buf,sizeof buf-1)<0)return 90;
+ char folders[900][9],marker[80],*end;unsigned count=0,total=0;
+ snprintf(marker,sizeof marker,"IFSYS dir %s:/DCIM\r\n",drive);
+ char *p=photo_frame(marker,&end);if(!p)return 90;
+ int rc=a7c_photo_folders(p,folders,&count);*end='M';if(rc)return rc;
+ for(unsigned folder=0;folder<count;folder++){
+  snprintf(marker,sizeof marker,"IFSYS dir %s:/DCIM/%s\r\n",drive,folders[folder]);p=photo_frame(marker,&end);if(!p)return 90;
+  for(char *line=p;*line;){
+   char *next=strchr(line,'\n');unsigned n=next?(unsigned)(next-line):strlen(line);char row[1025];
+   if(n>=sizeof row)return 90;memcpy(row,line,n);row[n]=0;
+   if(!strncmp(row,"[IFSYS]",7)){
+    char attr[7],size[32],date[11],clock[9],file[32];int used=0;u64 bytes;
+    if(sscanf(row,"[IFSYS]%6s %31s %10s %8s %31s %n",attr,size,date,clock,file,&used)!=5||!used||row[used]||strlen(attr)!=6||!dec(size,&bytes))return 90;
+    if(attr[0]=='a'&&a7c_photo_file(file)){
+     if(!bytes||bytes>274877906944ULL||strlen(date)!=10||strlen(clock)!=8||total==4000)return 90;
+     struct Photo *photo=&photos[total++];photo->bytes=bytes;
+     snprintf(photo->path,sizeof photo->path,"DCIM/%s/%s",folders[folder],file);
+     snprintf(photo->stamp,sizeof photo->stamp,"%sT%s",date,clock);
+    }
+   }else for(char *q=row;*q;q++)if(!space(*q))return 90;
+   if(!next)break;line=next+1;
+  }
+  *end='M';
+ }
+ qsort(photos,total,sizeof photos[0],photo_compare);
+ for(unsigned i=1;i<total;i++)if(!strcmp(photos[i-1].path,photos[i].path))return 90;
+ for(unsigned i=0;i<total;i++){
+  char out[120];int n=snprintf(out,sizeof out,"%s %llu - 0 %s -\n",photos[i].path,photos[i].bytes,photos[i].stamp);
+  if(write(1,out,n)!=n)return 74;
+ }
+ return 0;
+}
+struct Ordered {char *row,*stamp;};
+static struct Ordered ordered[4000];
+static int ordered_compare(const void *a,const void *b){
+ const struct Ordered *x=a,*y=b;int c=memcmp(y->stamp,x->stamp,19);
+ return c?c:strcmp(x->row,y->row);
+}
+/* Sort the already-parsed mixed queue by its fifth field. The camera's sort
+ * applet did not order the full queue as expected; no external index needed. */
+static int order_rows(const char *path){
+ if(load(path,buf,sizeof buf-1)<0)return 90;unsigned count=0;
+ for(char *line=buf;*line;){
+  char *next=strchr(line,'\n');if(next)*next=0;
+  char file[32],size[32],sidecar[32],xsize[32],stamp[32],xstamp[32];int at=0,end=0;u64 bytes;
+  if(count==4000||sscanf(line,"%31s %31s %31s %31s %n%31s %31s%n",file,size,sidecar,xsize,&at,stamp,xstamp,&end)!=6||!end||line[end]||(name(file)!=1&&!a7c_photo_path(file))||!dec(size,&bytes)||!bytes||strlen(stamp)!=19)return 90;
+  for(unsigned i=0;i<19;i++){
+   char want=i==4||i==7?'-':i==10?'T':i==13||i==16?':':0;
+   if(want?stamp[i]!=want:(stamp[i]<'0'||stamp[i]>'9'))return 90;
+  }
+  ordered[count++]=(struct Ordered){line,line+at};
+  if(!next)break;line=next+1;
+ }
+ qsort(ordered,count,sizeof ordered[0],ordered_compare);
+ for(unsigned i=0;i<count;i++){
+  unsigned n=strlen(ordered[i].row);
+  if(write(1,ordered[i].row,n)!=(int)n||write(1,"\n",1)!=1)return 74;
+ }
+ return 0;
 }
 static int exists(const char*drive,const char*filename,const char*path){
  if(strlen(drive)!=1||load(path,buf,sizeof(buf)-1)<0)return 90;
@@ -132,4 +205,4 @@ static int exists(const char*drive,const char*filename,const char*path){
   }else {for(char*q=line;*q;q++)if(*q!=' '&&*q!='\t')return 90;}line=next;
  }return found?0:10;
 }
-int main(int argc,char**v){(void)millis;if(argc==3&&!strcmp(v[1],"row-identity"))return row_identity(v[2]);if(argc==5&&!strcmp(v[1],"exists"))return exists(v[2],v[3],v[4]);if(argc==4&&!strcmp(v[1],"dir"))return directory(v[2],v[3],0);if(argc==4&&!strcmp(v[1],"newest"))return directory(v[2],v[3],1);if(argc==4&&!strcmp(v[1],"info"))return info(v[2],v[3]);if(argc==4&&!strcmp(v[1],"identity"))return metadata(v[2],v[3]);return 64;}
+int main(int argc,char**v){(void)millis;if(argc==3&&!strcmp(v[1],"row-identity"))return row_identity(v[2]);if(argc==3&&!strcmp(v[1],"order"))return order_rows(v[2]);if(argc==5&&!strcmp(v[1],"exists"))return exists(v[2],v[3],v[4]);if(argc==4&&!strcmp(v[1],"dir"))return directory(v[2],v[3],0);if(argc==4&&!strcmp(v[1],"newest"))return directory(v[2],v[3],1);if(argc==4&&!strcmp(v[1],"photos"))return photo_directory(v[2],v[3]);if(argc==4&&(!strcmp(v[1],"info")||!strcmp(v[1],"info-photos")))return info(v[2],v[3],!strcmp(v[1],"info-photos"));if(argc==4&&!strcmp(v[1],"identity"))return metadata(v[2],v[3]);return 64;}

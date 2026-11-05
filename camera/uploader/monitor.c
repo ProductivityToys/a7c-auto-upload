@@ -4,7 +4,9 @@
 typedef unsigned int u32;
 extern int pipe(int*),fork(void),dup2(int,int),close(int),execv(const char*,char*const*),kill(int,int),waitpid(int,int*,int),fcntl(int,int,...),poll(void*,unsigned long,int),read(int,void*,unsigned),write(int,const void*,unsigned),strcmp(const char*,const char*),strncmp(const char*,const char*,unsigned),snprintf(char*,unsigned,const char*,...),atoi(const char*),clock_gettime(int,void*),usleep(unsigned);
 extern int access(const char*,int);
+extern int sscanf(const char*,const char*,...);
 extern unsigned strlen(const char*); extern char *strstr(const char*,const char*);extern void _exit(int);
+#include "photo_path.h"
 extern void (*signal(int,void (*)(int)))(int);
 struct pf {int fd;short events,revents;};struct ts {long sec,nsec;};
 #ifndef A7C_MONOTONIC_CLOCK
@@ -18,6 +20,8 @@ static int receipt_name(const char*s){if(strlen(s)!=12||s[0]!='U'||(s[7]!='A'&&s
 #endif
 #include "monitor_result.h"
 static char buf[262144],transcript[262144];
+static char photo_folders[900][9],photo_drive;
+static unsigned photo_count;
 /* Fixed transactions reuse one MWF frontend. Each step still
  * requires its own native CRLF echo and following prompt; no pipelining. */
 static int filesystem_command(int stage,const char *reply,char *cmd,unsigned cap){
@@ -69,6 +73,7 @@ int main(int argc,char **argv){
  if(argc==2&&!strcmp(argv[1],"full-info")){bin="/usr/bin/mpr_monio.elf";prompt="MON>";marker="MprIf Debug Information";snprintf(cmd,sizeof(cmd),"MPR Debug Info");}else return 64;
 #else
  if(argc==2&&!strcmp(argv[1],"filesystem")){batch=1;filesystem_command(0,"",cmd,sizeof cmd);marker=cmd;}
+ else if(argc==2&&!strcmp(argv[1],"filesystem-photos")){batch=6;batch_last=3;filesystem_command(0,"",cmd,sizeof cmd);marker=cmd;}
  else if(argc==2&&!strcmp(argv[1],"recording-bundle")){batch=2;bin="/usr/bin/mpr_monio.elf";prompt="MON>";marker="[MprMcmd][RecInfo] =====";snprintf(cmd,sizeof cmd,"MPR Debug RecInfo");}
  else if(argc==4&&!strcmp(argv[1],"prepare")&&letter(argv[2])&&name(argv[3])&&strstr(argv[3],"M01.XML")){
   batch=3;batch_last=1;is_copy=1;seconds=10;
@@ -79,10 +84,10 @@ int main(int argc,char **argv){
  else if(argc==2&&!strcmp(argv[1],"drive")){marker="driveLetter =";snprintf(cmd,sizeof(cmd),"IFSYS getdriveletter /dev/mmca");}
  else if(argc==2&&!strcmp(argv[1],"info")){marker="******** Fsys - IFSYS";snprintf(cmd,sizeof(cmd),"IFSYS info");}
  else if(argc==3&&!strcmp(argv[1],"dir")&&letter(argv[2])){snprintf(cmd,sizeof(cmd),"IFSYS dir %s:/PRIVATE/M4ROOT/CLIP",argv[2]);marker=cmd;}
- else if(argc==5&&!strcmp(argv[1],"copy")&&letter(argv[2])&&name(argv[3])){
+ else if(argc==5&&!strcmp(argv[1],"copy")&&letter(argv[2])&&(name(argv[3])||a7c_photo_path(argv[3]))){
   is_copy=1;seconds=atoi(argv[4]);if(seconds<10||seconds>86400)return 64;
-  const char *out=strstr(argv[3],".MP4")?"source.fifo":"metadata.xml";
-  snprintf(cmd,sizeof(cmd),"IFSYS cp %s:/PRIVATE/M4ROOT/CLIP/%s /setting/a7c-uploader/ram/%s",argv[2],argv[3],out);marker=cmd;
+  const char *out=strstr(argv[3],".XML")?"metadata.xml":"source.fifo";
+  snprintf(cmd,sizeof(cmd),"IFSYS cp %s:/%s%s /setting/a7c-uploader/ram/%s",argv[2],a7c_photo_path(argv[3])?"":"PRIVATE/M4ROOT/CLIP/",argv[3],out);marker=cmd;
  }else return 64;
 #endif
 #ifdef A7C_TEST_FRONTEND
@@ -130,9 +135,19 @@ int main(int argc,char **argv){
      const char *q=strstr(m,ok);
      if(batch_stage==0&&q&&(q=strstr(q+strlen(ok),ok))&&!strstr(q+strlen(ok),ok))batch_last=0;
     }
+    if(batch==6&&batch_stage==3){
+     rc=a7c_photo_folders(m,photo_folders,&photo_count);if(rc)break;
+     batch_last=3+(int)photo_count;
+    }
     if(batch_stage<batch_last){
      ++batch_stage;
      if(batch==1){rc=filesystem_command(batch_stage,m,cmd,sizeof cmd);if(rc)break;snprintf(native_marker,sizeof native_marker,"%s\r\n",cmd);marker=native_marker;}
+     else if(batch==6){
+      if(batch_stage<=2){rc=filesystem_command(batch_stage,m,cmd,sizeof cmd);if(rc)break;if(batch_stage==1)photo_drive=cmd[10];}
+      else if(batch_stage==3)snprintf(cmd,sizeof cmd,"IFSYS dir %c:/DCIM",photo_drive);
+      else snprintf(cmd,sizeof cmd,"IFSYS dir %c:/DCIM/%s",photo_drive,photo_folders[batch_stage-4]);
+      snprintf(native_marker,sizeof native_marker,"%s\r\n",cmd);marker=native_marker;
+     }
      else if(batch==2){
       snprintf(cmd,sizeof cmd,"%s",batch_stage==1?"MPR Debug Info":"MPR Debug RecInfo");
       marker=batch_stage==1?"MprIf Debug Information":"[MprMcmd][RecInfo] =====";

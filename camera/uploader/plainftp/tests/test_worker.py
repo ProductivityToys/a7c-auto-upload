@@ -59,7 +59,7 @@ elif op in ('write','write-verify'):
 else:raise SystemExit(90)
 ''')
  def exe(self,name,body):p=self.d/name;p.write_text(body);p.chmod(0o700)
- def attempt(self,torn=False,source_unready=False):
+ def attempt(self,torn=False,source_unready=False,photo=None):
   old=(SRC.parent/'worker.sh').read_text();functions=''
   for name in ['log','uptime_seconds','wait_child','cleanup_completed_fifos']:
    functions+=re.search(r'^'+name+r'\(\) \{\n.*?^}\n',old,re.M|re.S)[0]
@@ -85,6 +85,9 @@ receipt_card_ready() { return 0; }
 plain_attempt
 exit $?
 '''
+  if photo:
+   script=script.replace('VIDEO=C0001.MP4','VIDEO='+photo)
+   script=script.replace('SOURCE_ROW="C0001.MP4 $SIZE C0001M01.XML $XSIZE 2026-10-22T17:00:00 2026-10-22T17:00:00"',f'SOURCE_ROW="{photo} $SIZE - 0 2026-10-22T17:00:00 -"')
   if source_unready:script=script.replace('source_checked() { return 0; }','source_checked() { return 1; }')
   script=script.replace('/bin/ash','/bin/sh').replace('/proc/$$/stat',str(self.root/'owner-stat')).replace('/proc/uptime',str(self.root/'uptime'))
   f=self.root/'attempt.sh';f.write_text(script)
@@ -92,6 +95,19 @@ exit $?
   if (self.d/'lease.log').exists():
    self.assertTrue((self.d/'lease.done').exists());self.assertIn('guardian_status=0',(self.d/'lease.log').read_text())
   return p
+ def test_jpeg_raw_share_transport_and_receipts_but_never_dedup_each_other(self):
+  for ext in ('JPG','ARW'):
+   path='DCIM/100MSDCF/DSC00197.'+ext
+   p=self.attempt(photo=path);self.assertEqual(p.returncode,0,p.stderr.decode())
+   key=hashlib.sha256(f'a7c-file-v1:{path}:{len(self.content)}:2026-10-22T17:00:00'.encode()).hexdigest()
+   self.assertEqual((self.remote/(key+'.'+ext)).read_bytes(),self.content)
+   count=len(self.ops);p=self.attempt(photo=path);self.assertEqual(p.returncode,0,p.stderr.decode());self.assertEqual(len(self.ops),count)
+  self.assertEqual(len(list(self.card.iterdir())),2)
+ def test_photo_failure_leaves_no_receipt_and_successful_retry_skips_later(self):
+  self.fault='truncate';path='DCIM/100MSDCF/DSC00197.JPG'
+  p=self.attempt(photo=path);self.assertEqual(p.returncode,1,p.stderr.decode());self.assertFalse(list(self.card.iterdir()))
+  self.fault=None;p=self.attempt(photo=path);self.assertEqual(p.returncode,0,p.stderr.decode())
+  count=len(self.ops);self.assertEqual(self.attempt(photo=path).returncode,0);self.assertEqual(len(self.ops),count)
  def test_worker_commit_then_sd_skip_without_network(self):
   p=self.attempt();self.assertEqual(p.returncode,0,p.stderr.decode());self.assertEqual(len(list(self.card.iterdir())),1)
   for f in self.card.iterdir():self.assertEqual(len(f.read_bytes()),512)

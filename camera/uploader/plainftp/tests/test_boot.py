@@ -23,6 +23,14 @@ class BootTests(unittest.TestCase):
   before={p.name:(p.stat().st_mtime_ns,p.read_bytes()) for p in self.c.iterdir()};r=self.run_boot();self.assertEqual(r.returncode,42,r.stderr+r.stdout);self.assertEqual(r.stdout,'started\n');self.assertNotIn('test-password',r.stderr);self.assertEqual(before,{p.name:(p.stat().st_mtime_ns,p.read_bytes()) for p in self.c.iterdir()});self.assertFalse((self.d/'plain.bootstrap.lock').exists())
  def test_nonprivate_secret_rejected_before_ram_copy(self):
   (self.c/'password').chmod(0o644);r=self.run_boot();self.assertEqual(r.returncode,90);self.assertEqual(list(self.d.iterdir()),[])
+ def test_photo_setting_is_passed_to_worker_and_unknown_modes_rejected(self):
+  self.write('config','a7c-plainftp-v2\n127.0.0.1\n21\nuploader\n/upload with spaces\n1\n')
+  worker=self.files['plain-worker.sh'].replace('echo started','[ "$5" = 1 ] || exit 94\necho started')
+  self.files['plain-worker.sh']=worker;self.write('plain-worker.sh',worker)
+  self.write('manifest',''.join(hashlib.sha256(v.encode()).hexdigest()+' '+n+'\n' for n,v in self.files.items()))
+  r=self.run_boot();self.assertEqual(r.returncode,42,r.stderr+r.stdout)
+  self.write('config',(self.c/'config').read_text().replace('\n1\n','\n2\n'))
+  self.assertEqual(self.run_boot().returncode,90)
  def test_no_owned_mount_or_busy_copy_rejected(self):
   self.mounts.write_text('other '+str(self.d)+' tmpfs rw 0 0\n');self.assertEqual(self.run_boot().returncode,90);self.assertEqual(list(self.d.iterdir()),[])
   self.mounts.write_text('a7c-upload-ram '+str(self.d)+' tmpfs rw 0 0\n');os.mkfifo(self.d/'source.fifo');self.assertEqual(self.run_boot().returncode,90);self.assertTrue((self.d/'source.fifo').is_fifo())

@@ -1,33 +1,65 @@
 {
-  "installer_version": "0.1.0-preview.23",
-  "package_revision": "preview.23",
-  "payload_version": "0.4.1-installer.14-preview",
-  "payload_sha256": "73da5682aefd1379a51f7f788d078d861f6a97ffed6aa31a4ddea5132da5a047",
+  "installer_version": "0.1.0-preview.24",
+  "package_revision": "preview.24",
+  "payload_version": "0.4.2-photos.4-preview",
+  "payload_sha256": "d478b798db19e3310eb06922a9e8f5b5f7327b66d6aa2593e129f5d94f4ba01d",
   "payload_files": 22,
   "channel": "preview",
   "supported_model": "ILCE-7C",
   "supported_firmware": "2.00",
-  "build_date": "2026-11-03",
+  "build_date": "2026-11-05",
   "unit_tests": {
-    "macOS": 100,
-    "Windows": 99
+    "macOS": 104,
+    "Windows": 103
   },
   "macOS": {
     "arch": "arm64",
-    "frozen_app_selfcheck": "Final preview.23 artifact checks are recorded in distributions.json after packaging; this embedded record preserves completed device acceptance.",
+    "frozen_app_selfcheck": "Final frozen App, signature and embedded-file checks recorded in distributions.json",
     "signature": "ad-hoc; not notarized",
     "release_artifacts": "See distributions.json for final archive/entry checks; validation embedded before packaging.",
-    "source_tests": "100 passed"
+    "source_tests": "104 passed"
   },
   "Windows": {
     "arch": "x64",
-    "status": "Windows11 build26200 x64: CLI uninstall/audit/driver restore, fresh install/default startup, C0258 upload/SD receipt/display cleanup passed; final frozen .22 GUI connect/installed recognition/inline FTP result/disconnect and driver-only restore with absent port instances passed.",
+    "status": "103 source tests passed, one POSIX skip; previous Windows camera lifecycle retained; this photo payload device-tested via macOS/Wi-Fi",
     "os": "11 build 26200",
     "signature": "unsigned preview",
-    "source_tests": "100 run:99 passed,1 POSIX skip; skipped test executed on macOS",
-    "frozen_app_selfcheck": "Final preview.23 artifact checks are recorded in distributions.json; unchanged executable logic from device-tested preview.22, apart from version metadata."
+    "source_tests": "104 run, 103 passed, 1 POSIX launcher skipped; Windows 11 source test run on 2026-11-05",
+    "frozen_app_selfcheck": "Final frozen EXE and embedded-file checks recorded in distributions.json"
   },
-  "camera_runtime_acceptance": {
+  "native_display": "Unchanged ABI21: .11 real wake/network login failure2 -> recovery1, C0254 on prior .10 progressed0 -> 99 and cleaned to idle100; same native binaries retain 26 ARM cases + 1000 idle frames.",
+  "privacy": {
+    "no_camera_password_in_artifacts": true,
+    "no_sony_libraries_fonts_media": true,
+    "debug_listener_in_payload": false
+  },
+  "changes": [
+    "Optional JPEG/ARW upload, off by default; GUI, numbered launcher and --photos/--no-photos CLI controls preserve saved choice",
+    "Same streaming FTP, size confirmation, SD receipts and retries; no whole-media readback/body hash or new index",
+    "Explicit native Still(JPG) STANDBY/zero-count gate with bracketing full idle state; mixed media sorted newest first in existing helper",
+    "Base upload, native display and Windows USB driver implementation retained from accepted preview.23",
+    "Photos: retry the lightweight hint after transient recorder-layout result95, instead of disabling it for the session; other failure policy unchanged",
+    "Read-only sampler recognizes measured native Still(JPG) type1 and XAVC type256; still busy/completion/unknown tests pass; live4s still quiet wait used7ms CPU"
+  ],
+  "sharing_status": "Private GitHub prerelease; macOS arm64, Windows x64 and CLI scripts. Tested ILCE-7C2.00; other firmware untested.",
+  "worker_tests": {
+    "macOS": 140,
+    "result": "passed; host C/shell/FTP integration; no camera I/O"
+  },
+  "native_start_tests": 1,
+  "unit_test_skips": {
+    "Windows": "1 POSIX launcher test; 104 run, 103 passed; skipped case executed on macOS"
+  },
+  "script_acceptance": {
+    "entrypoints": "macOS .command --help / menu start-exit and Windows CMD menu start-exit passed using prepared runtime and existing administrator session",
+    "camera_install_via_cli": "macOS earlier clean CLI install passed; Windows .21 pathfix actual CLI fresh install of .14/default start/independent inspection passed. Existing test FTP password supplied in RAM from verified private uninstall backup; interactive password prompt not claimed.",
+    "camera_uninstall_via_cli": "macOS prior uninstall passed; Windows .21:27 managed paths absent, owned preload absent, private backup retained; all3 own OEM driver packages removed and original driver restored",
+    "shared_core_tests": "host unit/integration tests only; not equivalent to CLI-on-camera end-to-end acceptance",
+    "camera_acceptance_path": "Actual macOS and Windows CLI lifecycle tested; Windows C0258 new video20978709 bytes, SD UF786A6A.RCP and display cleanup0 accepted. Final frozen Windows .22 GUI connect, installed recognition, inline FTP result and disconnect passed; GUI install/uninstall buttons not separately claimed.",
+    "next_device_acceptance": "No additional camera tests required for this packaging release; completed acceptance is recorded above."
+  },
+  "discovery_tests": 14,
+  "previous_camera_runtime_acceptance": {
     "candidate_payload": "0.4.1-installer.14-preview",
     "status": ".14 Wi-Fi persistent update and real no-recording wake accepted: LAN greeting to FTP login1.02761s and observed healthy icon2.377745s; same worker1445, all67 SD rows retained, native suspend/resume13/13, no pending lifecycle, debug hold released.",
     "previous_payload": "0.4.1-installer.6-preview",
@@ -189,47 +221,50 @@
       }
     }
   },
-  "native_display": "Unchanged ABI21: .11 real wake/network login failure2 -> recovery1, C0254 on prior .10 progressed0 -> 99 and cleaned to idle100; same native binaries retain 26 ARM cases + 1000 idle frames.",
-  "privacy": {
-    "no_camera_password_in_artifacts": true,
-    "no_sony_libraries_fonts_media": true,
-    "debug_listener_in_payload": false
-  },
-  "changes": [
-    "Unified macOS, Windows and script release; same accepted .14 camera payload and .22 executable logic, updated installer metadata only",
-    "Allow verified owned driver packages to retire absent instances with matching hardware after changing USB ports; additional live devices and different hardware still block removal",
-    "Use POSIX ancestry for camera directory commands on all hosts; fixes WindowsPath root loop before install/uninstall backup",
-    "Match Windows USB user API to installed driver; direct libusb0.dll avoids requiring an unbundled libusbK.dll bridge",
-    "Follow a verified same-serial ILCE-7C normal USB PID change after driver installation; keep both per-interface recovery records and bound retries to3",
-    "Initial-window check-fast uses a 1-second total timeout; ordinary check retains 4 seconds, transfers unchanged",
-    "New Wi-Fi interfaces use a bounded 10-second fast recovery window rather than two attempts; record check result/start/end timestamps; normal idle remains cached",
-    "One bounded FTP check at startup and Wi-Fi device-generation changes; error indicator, capped backoff and recovery clear; no idle FTP heartbeat",
-    "Replace BOOTTIME-only wake hint: Sony standby freezes system clocks; sampler observes wlan0 ifindex and worker retains its previous value across waits",
-    "Use negotiated USB current_speed rather than stale configured state; publish cached health after delayed native owner binding",
-    "Wait for USB gadget disconnection before native SD receipt/media access; keep the service alive while USB is attached",
-    "Reuse <=8s drive/directory for pre-copy check; refresh complete recording state and current card/open handles",
-    "Source-not-ready uses short retry instead of network exponential backoff",
-    "Remove fixed 1s wait between successful backlog uploads",
-    "Install starts service by default and verifies upload initialization and live native display",
-    "Desktop connection, installed state, inline FTP result and timestamped runtime log improvements",
-    "Detect already-retired renderer before reinitializing; report restart required instead of attempting one-shot native init twice"
-  ],
-  "sharing_status": "Private GitHub prerelease; macOS arm64, Windows x64 and CLI scripts. Tested ILCE-7C2.00; other firmware untested.",
-  "worker_tests": {
-    "macOS": 128,
-    "result": "passed; host C/shell/FTP integration; no camera I/O"
-  },
-  "native_start_tests": 1,
-  "unit_test_skips": {
-    "Windows": "1 POSIX launcher test; executed on macOS"
-  },
-  "script_acceptance": {
-    "entrypoints": "macOS .command --help / menu start-exit and Windows CMD menu start-exit passed using prepared runtime and existing administrator session",
-    "camera_install_via_cli": "macOS earlier clean CLI install passed; Windows .21 pathfix actual CLI fresh install of .14/default start/independent inspection passed. Existing test FTP password supplied in RAM from verified private uninstall backup; interactive password prompt not claimed.",
-    "camera_uninstall_via_cli": "macOS prior uninstall passed; Windows .21:27 managed paths absent, owned preload absent, private backup retained; all3 own OEM driver packages removed and original driver restored",
-    "shared_core_tests": "host unit/integration tests only; not equivalent to CLI-on-camera end-to-end acceptance",
-    "camera_acceptance_path": "Actual macOS and Windows CLI lifecycle tested; Windows C0258 new video20978709 bytes, SD UF786A6A.RCP and display cleanup0 accepted. Final frozen Windows .22 GUI connect, installed recognition, inline FTP result and disconnect passed; GUI install/uninstall buttons not separately claimed.",
-    "next_device_acceptance": "No additional camera tests required for this packaging release; completed acceptance is recorded above."
-  },
-  "discovery_tests": 12
+  "camera_runtime_acceptance": {
+    "candidate_payload": "0.4.2-photos.4-preview",
+    "status": "110 backlog photo files accepted; .2 Wi-Fi update uploaded four new files with exact lengths, SD receipts and display cleanup; software reboot autostart and all192 prior media deduplicated",
+    "photo_directory": "55 JPEG/ARW pairs parsed from native IFSYS DCIM listing",
+    "photos_complete_observed": 110,
+    "photo_length_mismatches": 0,
+    "body_hash_or_readback": false,
+    "startup_wait": "Long initial wait observed; no runtime wait log collected; not attributed to a cause",
+    "sd_receipt_scope": "Direct .2 runtime logs: DSC05455.ARW UC5C33DA.RCP, JPG U8DD9A8A.RCP; DSC05454.ARW U2BF354A.RCP, JPG U9DA2CDA.RCP; DISPLAY_EXIT rc0",
+    "new_photo_detection": "Two new RAW+JPEG groups DSC05455 then DSC05454 accepted after still-mode gate fix",
+    "sleep_tests": "Not repeated per user request",
+    "release_scope": "Actual photo transfer and software reboot/dedup on .2; final .4 changes read-only hints/scheduling only; live runtime and final package checks in distributions.json",
+    "photos_jpeg": 55,
+    "photos_arw": 55,
+    "photo_total_bytes": 3480402997,
+    "photo_interruption_events": 0,
+    "photo_repeat_completions": 0,
+    "photo_parts_remaining": 0,
+    "photo_backlog_finished": "2026-11-05T01:15:00+08:00",
+    "still_gate_fix": "Native Still(JPG) STANDBY zero-count snapshots bracket full STAT_IDLE/active StillRecorder; active counts and transitions rejected",
+    "software_restart": {
+      "method": "non-forced BusyBox reboot, no manual uploader start after reboot",
+      "boot_id_before": "3f5e9f02-11bf-4aec-a110-0a0950a69c3a",
+      "boot_id_after": "1145edce-6896-4d60-9c4a-9f8deb29519a",
+      "worker": 716,
+      "dedup_total": 192,
+      "dedup_photos": 114,
+      "dedup_videos": 78,
+      "old_files_retransferred": 0,
+      "network_scope": "Camera initially not associated to AP; user restored native Wi-Fi. Same boot worker logged in, cleared FTP error and scanned without manual service restart."
+    },
+    "post_reboot_new_photo": {
+      "name": "DSC05456",
+      "ARW_bytes": 49026560,
+      "JPG_bytes": 9250617,
+      "sd_receipts": {
+        "ARW": "UAE30FAA.RCP",
+        "JPG": "UD409D4A.RCP"
+      },
+      "old_retransfers": 0,
+      "partial_files": 0,
+      "display_exit": 0,
+      "worker": 716
+    },
+    "sampling_scope": ".4 adds native Still type1 support to read-only sampler and retries transient layout95 while photos enabled. Host sampler14 and FTP140 tests passed; live ARM quiet wait4057ms/CPU7ms. Transfer binaries unchanged from accepted .2."
+  }
 }

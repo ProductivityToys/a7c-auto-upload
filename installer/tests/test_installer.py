@@ -74,6 +74,15 @@ class MemoryCamera:
 
 
 class ConfigurationTests(unittest.TestCase):
+    def test_photo_setting_is_explicit_and_does_not_change_existing_video_config(self):
+        from dataclasses import replace
+        enabled = replace(SETTINGS, photos=True)
+        self.assertEqual(enabled.camera_files()['config'].splitlines(),
+                         [b'a7c-plainftp-v2', b'192.168.1.20', b'21', b'camera-upload', b'/Camera', b'1'])
+        self.assertTrue(enabled.public()['photos'])
+        self.assertFalse(SETTINGS.public()['photos'])
+        with self.assertRaises(InstallerError):
+            replace(SETTINGS, photos='yes').validate()
     def test_contract(self):
         files = SETTINGS.camera_files()
         self.assertEqual(files["config"].splitlines(), [b"a7c-plainftp-v1", b"192.168.1.20", b"21", b"camera-upload", b"/Camera"])
@@ -231,6 +240,23 @@ class TransactionTests(unittest.TestCase):
         self.assertEqual(self.camera.files[PASSWORD], SETTINGS.password.encode() + b"\n")
         self.assertFalse(self.camera.exists(DISPLAY_ENABLE))
         self.assertEqual(self.tested, [SETTINGS, SETTINGS])
+    def test_enable_photos_with_saved_secret_and_readback_then_disable(self):
+        self.bundle.manifest['features'] = ['photos-jpeg-arw']
+        self.installer.install(SETTINGS)
+        result = self.installer.install(reuse=True, photos=True)
+        self.assertTrue(result['ftp']['photos'])
+        self.assertTrue(self.installer.inspect()['ftp']['photos'])
+        self.assertEqual(self.camera.files[PASSWORD], SETTINGS.password.encode() + b'\n')
+        self.assertEqual(self.camera.files[CONFIG].splitlines()[-1], b'1')
+        self.installer.install(reuse=True, photos=False)
+        self.assertFalse(self.installer.inspect()['ftp']['photos'])
+        self.assertEqual(self.camera.files[CONFIG], SETTINGS.camera_files()['config'])
+    def test_video_only_payload_refuses_photo_configuration_before_writing(self):
+        self.bundle.manifest.pop('features', None)
+        self.camera.events.clear()
+        with self.assertRaisesRegex(InstallerError, '不含图片上传'):
+            self.installer.install(SETTINGS, photos=True)
+        self.assertEqual(self.camera.events, [])
 
     def test_empty_password_update_preserves_saved_secret(self):
         from dataclasses import replace

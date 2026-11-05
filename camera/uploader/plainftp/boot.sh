@@ -24,10 +24,17 @@ boot_mark() {
 }
 private "$C" drwx------ && private "$C/config" -rw------- && private "$C/password" -rw------- && private "$C/manifest" -rw------- || fail permissions
 [ "$($B wc -c < "$C/config")" -le 1024 ] && [ "$($B wc -c < "$C/password")" -le 257 ] || fail length
+photos=0
 {
- IFS= read -r version && IFS= read -r host && IFS= read -r port && IFS= read -r user && IFS= read -r root && ! IFS= read -r extra
+ IFS= read -r version && IFS= read -r host && IFS= read -r port && IFS= read -r user && IFS= read -r root || fail config
+ case "$version" in
+  a7c-plainftp-v1) ;;
+  a7c-plainftp-v2) IFS= read -r photos || fail config; case "$photos" in 0|1) ;; *) fail photos;; esac;;
+  *) fail version;;
+ esac
+ ! IFS= read -r extra
 } < "$C/config" || fail config
-[ "$version" = a7c-plainftp-v1 ] && [ -z "$extra" ] || fail version
+[ -z "$extra" ] || fail config
 $B mkdir "$D/plain.bootstrap.lock" || fail claimed
 trap '$B rmdir "$D/plain.bootstrap.lock"' EXIT
 : > "$D/plain-boot-timings.log"
@@ -79,4 +86,4 @@ fi
 $B rmdir "$D/plain.bootstrap.lock" || fail release
 trap - EXIT
 boot_mark worker_exec
-exec /bin/ash "$D/plain-worker.sh" "$host" "$port" "$user" "$root" < "$C/password"
+exec /bin/ash "$D/plain-worker.sh" "$host" "$port" "$user" "$root" "$photos" < "$C/password"

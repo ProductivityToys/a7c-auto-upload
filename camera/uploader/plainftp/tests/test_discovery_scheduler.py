@@ -61,6 +61,22 @@ discovery_wait || exit 3
 [ "$(wc -l < "$D/calls" | xargs)" = 23 ] || exit 2
 [ "$(cat "$D/sleeps")" = 1 ] || exit 3
 ''')
+ def test_photo_layout_change_retries_hint_and_returns_to_quiet_wait(self):
+  self.run_shell('''PHOTOS=1; DISCOVERY_OFF=0
+discovery_wait || exit 1
+[ "$DISCOVERY_OFF" = 0 ] && [ "$QUEUE_PENDING" = 1 ] || exit 2
+[ "$(cat "$D/plain.checked")" = 'old verified row' ] || exit 3
+echo 0 > "$D/return"
+discovery_wait || exit 4
+[ "$(wc -l < "$D/calls" | xargs)" = 2 ] || exit 5
+[ "$(tail -1 "$D/calls")" = '162 wait 30 0' ] || exit 6
+[ "$(cat "$D/sleeps")" = 2 ] || exit 7
+''',95)
+ def test_photo_transport_or_memory_failure_keeps_original_disable_policy(self):
+  self.run_shell('''PHOTOS=1
+discovery_wait || exit 1
+[ "$DISCOVERY_OFF" = 1 ] || exit 2
+''',72)
  def test_network_change_breaks_long_backoff_and_requests_one_health_check(self):
   self.run_shell('''delay=600; FTP_CHECK_DUE=0; FTP_CHECK_BACKOFF=600
 discovery_wait || exit 1

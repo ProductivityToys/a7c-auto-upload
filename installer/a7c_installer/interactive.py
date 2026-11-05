@@ -36,8 +36,16 @@ def prompt_settings(saved, ask=input, secret=getpass.getpass):
         raise InstallerError('端口须为数字。') from None
     username = field('用户名', 'username')
     directory = field('FTP 目录', 'directory', '/')
+    photos = bool(saved.get('photos', False))
+    choice = ask('同时上传图片（JPEG 和 RAW） [' + ('Y/n' if photos else 'y/N') + ']：').strip().lower()
+    if choice in ('y', 'yes', '1', '是'):
+        photos = True
+    elif choice in ('n', 'no', '0', '否'):
+        photos = False
+    elif choice:
+        raise InstallerError('图片上传选项请输入 y 或 n，留空沿用。')
     password = secret('FTP 密码（留空沿用相机已保存密码）：' if saved else 'FTP 密码：')
-    settings = FtpSettings(host, port, username, directory, password)
+    settings = FtpSettings(host, port, username, directory, password, photos=photos)
     preserve = bool(saved) and not password
     (settings.validate_target() if preserve else settings.validate())
     return settings, preserve
