@@ -1,9 +1,9 @@
-# A7C Installer 0.1.0-preview.24
+# A7C Installer 0.1.0-preview.25
 
-相机载荷为 `0.4.2-photos.4-preview`，已验证第一代 **ILCE-7C / 固件 2.00**。
+相机载荷为 `0.4.2-photos.5-preview`，已验证第一代 **ILCE-7C / 固件 2.00**。
 桌面 App 和脚本共用安装核心，不升级固件，不安装 NAS 专用接收器，不处理 Photos 索引。
 
-当前版本已通过 macOS 与 Windows 的 CLI 卸载、全新安装和默认启动验证；Windows 全新安装后的新视频上传、SD 回执和进度显示收尾通过。Windows 打包 App 的连接、已安装识别、FTP 就地测试结果和断开也已验证。本批三个平台包版本统一为 preview.24，构建与实机验收范围见 `validation.json` 和发行目录的 `distributions.json`。
+当前版本已通过 macOS 与 Windows 的 CLI 卸载、全新安装和默认启动验证；Windows 全新安装后的新视频上传、SD 回执和进度显示收尾通过。Windows 打包 App 的连接、已安装识别、FTP 就地测试结果和断开也已验证。本批三个平台包版本统一为 preview.25，构建与实机验收范围见 `validation.json` 和发行目录的 `distributions.json`。
 
 本版新增 JPEG／ARW 图片上传开关、拍照待机支持和按时间排序的混合媒体队列。CLI 可用 `install --reuse --photos --yes` 开启，`--no-photos` 关闭；更新时默认沿用已有选择。
 

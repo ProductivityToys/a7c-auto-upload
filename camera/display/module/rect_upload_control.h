@@ -8,6 +8,9 @@ static int rect_upload_publish(U word){
 static int rect_upload_wait(int pid){
     (void)pid;
     U began=millis(),seq=0,percent=0,last=100;int photographed=0,result=0;
+#ifdef RECT_SERVICE_TRIAL
+    U refreshed=100;
+#endif
     for(;;){
         struct event_marker m;U detail[8];
         if(event_read(&m)||rd(event_marker_address+sizeof m,detail,sizeof detail)){result=-1;break;}
@@ -19,6 +22,15 @@ static int rect_upload_wait(int pid){
         if(millis()-began>=upload_request.limit*1000U){printf("RECT_UPLOAD_END reason=request-limit\n");break;}
 #else
         if(millis()-began>=55000){printf("RECT_UPLOAD_END reason=trial-limit\n");break;}
+#endif
+#ifdef RECT_SERVICE_TRIAL
+        /* Photo standby can keep a static OSD. Give native redraws one poll
+         * to consume the previous value, then request a frame only if stale.
+         * Never refresh an unchanged percentage or create an idle timer. */
+        if(last<100&&detail[5]!=last&&refreshed!=last){
+            int redraw=frame_redraw(pid);refreshed=last;
+            printf("RECT_UPLOAD_REFRESH percent=%u result=%d\n",last,redraw);fflush(0);
+        }
 #endif
         unsigned incoming;
         if(!progress_for_token(upload_request.token,upload_request.bytes,&incoming)&&incoming>percent)percent=incoming;
@@ -32,8 +44,7 @@ static int rect_upload_wait(int pid){
         poll(0,0,500);
     }
     if(rect_upload_publish(0))result=-1;
-    /* A static UI need not render another frame; module exit also gates and
-     * drains the wrapper. Never issue UI queries to manufacture an update. */
+    /* The service guardian restores the idle mark, including a static OSD. */
     printf("RECT_UPLOAD_STOP result=%d photographed=%d\n",result,photographed);fflush(0);
     return result;
 }

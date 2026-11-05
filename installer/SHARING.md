@@ -1,6 +1,6 @@
 # 发布与分享
 
-本批安装器为 `0.1.0-preview.24`，相机载荷为 `0.4.2-photos.4-preview`。提供 macOS arm64、Windows x64 和脚本三个包，使用同一相机载荷。JPEG／ARW 图片上传默认关闭，开启后与视频共用普通 FTP、进度显示、SD 回执与失败重试。
+本批安装器为 `0.1.0-preview.25`，相机载荷为 `0.4.2-photos.5-preview`。提供 macOS arm64、Windows x64 和脚本三个包，使用同一相机载荷。JPEG／ARW 图片上传默认关闭，开启后与视频共用普通 FTP、进度显示、SD 回执与失败重试。
 
 ## 发给使用者
 

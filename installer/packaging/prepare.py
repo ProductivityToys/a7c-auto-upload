@@ -88,7 +88,7 @@ def main():
     members = ["native-probe", "native-module.so", "native-start.sh", "consumer.sh", "native.sha256", "redraw"]
     payload[prefix + "manifest"] = "".join(digest(payload[prefix + n]) + " " + n + "\n" for n in members).encode()
     info = {
-        "format": 1, "payload_version": "0.4.2-photos.4-preview", "features": ["photos-jpeg-arw"],
+        "format": 1, "payload_version": "0.4.2-photos.5-preview", "features": ["photos-jpeg-arw"],
         "firmware": {"model": "ILCE-7C", "version": "2.00", "version_txt": "39119_05.2021111501", "dependencies": dependencies},
         "files": {},
     }

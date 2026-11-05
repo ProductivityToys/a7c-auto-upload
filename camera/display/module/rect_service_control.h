@@ -27,20 +27,21 @@ static int rect_service_preview_wait(int pid){
     }
 done:if(rect_upload_publish(0))rc=-1;return rc;
 }
-/* The module requests repaint on mode transitions. Do not race that repaint
- * with redraw_once, which correctly refuses an already pending native frame. */
-static int rect_service_return_idle(void){
+/* Allow a natural transition first; static photo OSDs need one native redraw.
+ * The independent guardian also runs this after controller EOF/termination. */
+static int rect_service_return_idle(int pid){
     if(rect_upload_publish(0))return -1;
     for(U i=0;i<40;i++){
         U detail[8];
         if(rd(event_marker_address+sizeof(struct event_marker),detail,sizeof detail)||detail[6])return -1;
-        if(detail[3]&&detail[5]==
+        if(detail[3]&&(detail[5]==
 #ifdef A7C_SERVICE_NO_IDLE
            101
 #else
            100
 #endif
-           )return 0;
+           ||detail[5]==102))return 0;
+        if(i==10){int redraw=frame_redraw(pid);printf("SERVICE_IDLE_REFRESH result=%d\n",redraw);fflush(0);}
         poll(0,0,50);
     }
     return -1;
@@ -55,7 +56,7 @@ static int rect_service_upload(int pid,int preview){
     fflush(0);int child=fork();if(child<0)return 76;
     if(!child){
         close(fds[1]);alarm(limit+45);dds_guard_wait(fds[0],1,limit);
-        int clear=preview?rect_service_return_idle():rect_upload_publish(0);close(fds[0]);
+        int clear=rect_service_return_idle(pid);close(fds[0]);
         printf("SERVICE_UPLOAD_GUARD idle=%d\n",clear);fflush(0);_exit(clear?1:0);
     }
     close(fds[0]);guard_writer=fds[1];

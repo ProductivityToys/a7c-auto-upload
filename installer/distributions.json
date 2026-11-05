@@ -1,42 +1,44 @@
 {
-  "package_revision": "preview.24",
-  "installer_version": "0.1.0-preview.24",
-  "payload_version": "0.4.2-photos.4-preview",
-  "payload_sha256": "d478b798db19e3310eb06922a9e8f5b5f7327b66d6aa2593e129f5d94f4ba01d",
-  "artifact_directory": "/Volumes/ExtWorkspace/a7c-ftp-research/releases/installer-0.1.0-preview.24",
-  "build_date": "2026-11-05",
-  "repository": "https://github.com/ProductivityToys/a7c-auto-upload",
-  "release_url": "https://github.com/ProductivityToys/a7c-auto-upload/releases/tag/v0.1.0-preview.24",
-  "visibility": "private",
-  "packages": {
-    "a7c-installer-0.1.0-preview.24-scripts.zip": {
-      "bytes": 3932878,
-      "sha256": "8b9f4501cc798f64d274f8b7232f6f07ddb61fb210a4bd5160c2ddb5465c99a5"
+  "package_revision": "preview.25",
+  "installer_version": "0.1.0-preview.25",
+  "payload_version": "0.4.2-photos.5-preview",
+  "payload_sha256": "8dd69b3e94fa6773eb3c34b64b88c82ddb7b13413999f5f7cd2b28c252e38b5f",
+  "artifact_directory": "/Volumes/ExtWorkspace/a7c-ftp-research/releases/installer-0.1.0-preview.25",
+  "release_url": "https://github.com/ProductivityToys/a7c-auto-upload/releases/tag/v0.1.0-preview.25",
+  "private": true,
+  "prerelease": true,
+  "assets": {
+    "a7c-installer-0.1.0-preview.25-scripts.zip": {
+      "bytes": 3933110,
+      "sha256": "e5cf87ab89233bb3a452ce59df4c979f13b82a25ea48c63b3465ee58d5eb22a0"
     },
-    "a7c-installer-0.1.0-preview.24-macos-arm64.dmg": {
-      "bytes": 40348071,
-      "sha256": "f3a70512c3b1f0fae99ec5aa8ca324d8a5577b474221226a97a56607fc311efa"
+    "a7c-installer-0.1.0-preview.25-macos-arm64.dmg": {
+      "bytes": 40449167,
+      "sha256": "e49b856c79e0bc1ce65fdf6abcbb18dd6a2a25bdd0c86531dee8c70fd6b9dea7"
     },
-    "a7c-installer-0.1.0-preview.24-windows-x64.zip": {
-      "bytes": 46830686,
-      "sha256": "523332534426644a68013a9b9be6167fc82d7b8b870e70eb24539488dc06ff5e"
+    "a7c-installer-0.1.0-preview.25-windows-x64.zip": {
+      "bytes": 46879242,
+      "sha256": "44aef362235cc54ce86a90feed4801c946c994671737d231631e285eccaed1dd"
     }
   },
-  "unit_tests": {
-    "macOS": "104 installer,140 ordinary FTP,14 read-only sampler passed; baseline45 run,2 explicit large-stream skips",
-    "Windows": "104 installer run,103 passed,1 POSIX launcher skip executed on Mac"
-  },
-  "tested_firmware": "ILCE-7C2.00; other versions untested",
-  "entry_verification": {
+  "verification": {
     "macOS": {
-      "Mac DMG": "Read-only mount, two visible entries, Applications symlink, signature, six exact guides, exact payload and offline selfcheck passed",
-      "Mac scripts": "ZIP CRC, launcher execute bits, actual .command help/photo flags and menu startup/exit in path with spaces passed; prepared runtime and existing sudo session; no USB actions",
-      "selfcheck": {
-        "installer_version": "0.1.0-preview.24",
+      "checksums": true,
+      "zip_crc": true,
+      "script_help": true,
+      "macos_numbered_menu": true,
+      "macos_menu_scope": "prepared shared runtime, existing sudo authorization, exit only; no camera access",
+      "dmg_readonly_mount": true,
+      "macos_signature": true,
+      "macos_plist_version": 25,
+      "embedded_help_bytes_match": 6,
+      "all_payloads_match": true,
+      "dmg_selfcheck": {
+        "installer_version": "0.1.0-preview.25",
         "platform": "macOS-27.0.1-arm64-arm-64bit-Mach-O",
-        "payload_version": "0.4.2-photos.4-preview",
+        "payload_version": "0.4.2-photos.5-preview",
         "payload_files": 22,
-        "payload_sha256": "d478b798db19e3310eb06922a9e8f5b5f7327b66d6aa2593e129f5d94f4ba01d",
+        "payload_sha256": "8dd69b3e94fa6773eb3c34b64b88c82ddb7b13413999f5f7cd2b28c252e38b5f",
         "firmware": "2.00",
         "usb": "skipped: offline self-check",
         "bundled_help": {
@@ -50,11 +52,11 @@
       "cmd": "passed: actual CMD launcher, menu startup and exit in path with spaces",
       "scope": "Existing administrator SSH token and prepared shared Python runtime; no UAC/first-dependency-download/camera/driver changes in this entry test",
       "selfcheck": {
-        "installer_version": "0.1.0-preview.24",
+        "installer_version": "0.1.0-preview.25",
         "platform": "Windows-11-10.0.26200-SP0",
-        "payload_version": "0.4.2-photos.4-preview",
+        "payload_version": "0.4.2-photos.5-preview",
         "payload_files": 22,
-        "payload_sha256": "d478b798db19e3310eb06922a9e8f5b5f7327b66d6aa2593e129f5d94f4ba01d",
+        "payload_sha256": "8dd69b3e94fa6773eb3c34b64b88c82ddb7b13413999f5f7cd2b28c252e38b5f",
         "firmware": "2.00",
         "usb": "skipped: offline self-check",
         "bundled_help": {
@@ -72,42 +74,22 @@
           ]
         }
       }
-    }
-  },
-  "camera_acceptance": {
-    "backlog": "55 JPEG/ARW pairs (110 files),3480402997 bytes, all expected native lengths matched",
-    "new_photo_after_reboot": "DSC05456 ARW49026560 and JPEG9250617 bytes; SD UAE30FAA.RCP/UD409D4A.RCP, display cleanup0",
-    "software_restart": {
-      "method": "non-forced BusyBox reboot, no manual uploader start after reboot",
-      "boot_id_before": "3f5e9f02-11bf-4aec-a110-0a0950a69c3a",
-      "boot_id_after": "1145edce-6896-4d60-9c4a-9f8deb29519a",
-      "worker": 716,
-      "dedup_total": 192,
-      "dedup_photos": 114,
-      "dedup_videos": 78,
-      "old_files_retransferred": 0,
-      "network_scope": "Camera initially not associated to AP; user restored native Wi-Fi. Same boot worker logged in, cleared FTP error and scanned without manual service restart."
     },
-    "final_payload": ".4 current worker818: DSC05457 JPEG9152140/SD U28DC2FA.RCP completed; prior ARW49030656/SD UA0E3BDA.RCP skipped after cooperative worker restart; source sizes match",
-    "further_fresh_photo_on_final_payload": {
-      "name": "DSC05458",
-      "ARW_bytes": 49010176,
-      "JPG_bytes": 9058819,
-      "ARW_receipt": "UE58FFEA.RCP",
-      "JPG_receipt": "U02CC0BA.RCP",
-      "display_cleanup": 0
+    "source_tests": {
+      "macOS": {
+        "run": 104,
+        "passed": 104
+      },
+      "Windows": {
+        "run": 104,
+        "passed": 103,
+        "skipped": 1
+      },
+      "display": {
+        "run": 9,
+        "passed": 9
+      }
     },
-    "current_final_photo_count": 120,
-    "old_files_changed": 0,
-    "partial_files": 0,
-    "live_still_hint": {
-      "elapsed_ms": 4057,
-      "cpu_ms": 7,
-      "samples": 5,
-      "return_code": 0
-    },
-    "sleep_wake_retested": false,
-    "scope": "Actual current photo payload via macOS CLI/Wi-Fi on same ILCE-7C2.00. Earlier Windows camera install/uninstall/driver acceptance retained in validation; no new Windows camera I/O this release."
-  },
-  "packaging_scope": "Frozen installer logic unchanged after final desktop builds; final .4 payload and six guides refreshed, Mac resigned, both final archives rechecked against source. No wireless debugger, credentials, Sony binaries or fonts included."
+    "scope": "Frozen App/entry/embedded-file offline checks; exact camera payload .5 already validated via Wi-Fi on ILCE-7C2.00. No camera or driver changes during packaging."
+  }
 }

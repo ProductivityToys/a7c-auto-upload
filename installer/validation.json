@@ -1,8 +1,8 @@
 {
-  "installer_version": "0.1.0-preview.24",
-  "package_revision": "preview.24",
-  "payload_version": "0.4.2-photos.4-preview",
-  "payload_sha256": "d478b798db19e3310eb06922a9e8f5b5f7327b66d6aa2593e129f5d94f4ba01d",
+  "installer_version": "0.1.0-preview.25",
+  "package_revision": "preview.25",
+  "payload_version": "0.4.2-photos.5-preview",
+  "payload_sha256": "8dd69b3e94fa6773eb3c34b64b88c82ddb7b13413999f5f7cd2b28c252e38b5f",
   "payload_files": 22,
   "channel": "preview",
   "supported_model": "ILCE-7C",
@@ -27,19 +27,16 @@
     "source_tests": "104 run, 103 passed, 1 POSIX launcher skipped; Windows 11 source test run on 2026-11-05",
     "frozen_app_selfcheck": "Final frozen EXE and embedded-file checks recorded in distributions.json"
   },
-  "native_display": "Unchanged ABI21: .11 real wake/network login failure2 -> recovery1, C0254 on prior .10 progressed0 -> 99 and cleaned to idle100; same native binaries retain 26 ARM cases + 1000 idle frames.",
+  "native_display": "ABI21 module unchanged byte-for-byte; external controller refreshes stale photo-mode progress and restores idle mark via the existing bounded native redraw helper. No idle redraw timer.",
   "privacy": {
     "no_camera_password_in_artifacts": true,
     "no_sony_libraries_fonts_media": true,
     "debug_listener_in_payload": false
   },
   "changes": [
-    "Optional JPEG/ARW upload, off by default; GUI, numbered launcher and --photos/--no-photos CLI controls preserve saved choice",
-    "Same streaming FTP, size confirmation, SD receipts and retries; no whole-media readback/body hash or new index",
-    "Explicit native Still(JPG) STANDBY/zero-count gate with bracketing full idle state; mixed media sorted newest first in existing helper",
-    "Base upload, native display and Windows USB driver implementation retained from accepted preview.23",
-    "Photos: retry the lightweight hint after transient recorder-layout result95, instead of disabling it for the session; other failure policy unchanged",
-    "Read-only sampler recognizes measured native Still(JPG) type1 and XAVC type256; still busy/completion/unknown tests pass; live4s still quiet wait used7ms CPU"
+    "Fix photo standby progress remaining at the idle icon: allow natural redraw first, then request a native redraw only for a stale changed percentage",
+    "After upload/EOF, the independent guardian restores the idle/error indicator even on a static photo OSD",
+    "Uploader, JPEG/ARW toggle, FTP size confirmation, SD receipts, retry policy, drawing DSO and USB drivers unchanged"
   ],
   "sharing_status": "Private GitHub prerelease; macOS arm64, Windows x64 and CLI scripts. Tested ILCE-7C2.00; other firmware untested.",
   "worker_tests": {
@@ -222,7 +219,7 @@
     }
   },
   "camera_runtime_acceptance": {
-    "candidate_payload": "0.4.2-photos.4-preview",
+    "candidate_payload": "0.4.2-photos.5-preview",
     "status": "110 backlog photo files accepted; .2 Wi-Fi update uploaded four new files with exact lengths, SD receipts and display cleanup; software reboot autostart and all192 prior media deduplicated",
     "photo_directory": "55 JPEG/ARW pairs parsed from native IFSYS DCIM listing",
     "photos_complete_observed": 110,
@@ -265,6 +262,17 @@
       "display_exit": 0,
       "worker": 716
     },
-    "sampling_scope": ".4 adds native Still type1 support to read-only sampler and retries transient layout95 while photos enabled. Host sampler14 and FTP140 tests passed; live ARM quiet wait4057ms/CPU7ms. Transfer binaries unchanged from accepted .2."
+    "sampling_scope": ".4 adds native Still type1 support to read-only sampler and retries transient layout95 while photos enabled. Host sampler14 and FTP140 tests passed; live ARM quiet wait4057ms/CPU7ms. Transfer binaries unchanged from accepted .2.",
+    "photo_osd_refresh": {
+      "tested_firmware": "ILCE-7C 2.00",
+      "observed_bug": "At 12% actual progress, photo standby retained idle icon; controller log alone did not prove screen refresh",
+      "verified": "Actual photo transfer at 68% showed progress; final screenshot restored 92-pixel idle mark; guard and consumer returned success; SD receipts and NAS length proof retained",
+      "native_dso_unchanged": true,
+      "native_probe_sha256": "fde2bd9fdd7862bc81eca7c93f5ad716fdbe209e90aac11d1e8bb18fd9c6f656",
+      "host_display_tests": 9,
+      "persistent_files_match": 22,
+      "deployment": "Wi-Fi persistent update without reboot or reinstalling uploader",
+      "sleep_or_cold_boot_tests": "Not repeated for this external-controller fix"
+    }
   }
 }
