@@ -1,3 +1,5 @@
+**中文** | [English](README.en.md)
+
 # A7C Auto Upload
 
 给第一代 Sony A7C 补上 **Wi-Fi 视频自动上传**。
