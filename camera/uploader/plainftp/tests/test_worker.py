@@ -110,6 +110,27 @@ exit $rc
   p=self.attempt(photo=path);self.assertEqual(p.returncode,1,p.stderr.decode());self.assertFalse(list(self.card.iterdir()))
   self.fault=None;p=self.attempt(photo=path);self.assertEqual(p.returncode,0,p.stderr.decode())
   count=len(self.ops);self.assertEqual(self.attempt(photo=path).returncode,0);self.assertEqual(len(self.ops),count)
+ def test_login_failure_before_fifo_reader_cleans_up_and_retries_photo(self):
+  # A health check can pass and the next login still fail. With no network
+  # FIFO reader, the real relay must finish its guardian before exiting.
+  (self.d/'plainftp').rename(self.d/'plainftp-real')
+  self.exe('plainftp','''#!/bin/sh
+if [ "$1" = put ] && [ -f "$TEST_RAM/reject-put" ]; then
+ printf '%s\\n' wrong | "$TEST_RAM/plainftp-real" "$@"
+ exit $?
+fi
+exec "$TEST_RAM/plainftp-real" "$@"
+''')
+  (self.d/'reject-put').touch();path='DCIM/100MSDCF/DSC05470.ARW'
+  p=self.attempt(photo=path);self.assertEqual(p.returncode,1,p.stderr.decode())
+  self.assertFalse(list(self.card.iterdir()));self.assertFalse(self.ops)
+  for name in ('source.fifo','network.fifo','relay.ready','relay.result'):
+   self.assertFalse((self.d/name).exists(),name)
+  self.assertEqual((self.d/'guard.done').read_text(),'normal\n')
+  self.assertIn('FTP_TRANSFER_RESULT copy=76 relay=68 ftp=75',(self.d/'events.log').read_text())
+  (self.d/'reject-put').unlink()
+  p=self.attempt(photo=path);self.assertEqual(p.returncode,0,p.stderr.decode())
+  count=len(self.ops);self.assertEqual(self.attempt(photo=path).returncode,0);self.assertEqual(len(self.ops),count)
  def test_worker_commit_then_sd_skip_without_network(self):
   p=self.attempt();self.assertEqual(p.returncode,0,p.stderr.decode());self.assertEqual(len(list(self.card.iterdir())),1)
   for f in self.card.iterdir():self.assertEqual(len(f.read_bytes()),512)

@@ -1,5 +1,5 @@
-/* ILCE-7C 2.00 discovery hint. Read-only procfs, no native calls,
- * hooks, ptrace attachment, signals, media opens or writes. Never a media gate.
+/* ILCE-7C 2.00 recorder hints and optional native FTP switch read.
+ * Read-only procfs, no native calls, hooks, ptrace, or media access.
  */
 #include "../compat.h"
 #ifdef __arm__
@@ -32,6 +32,48 @@ static int readable(u32 at,unsigned n){
  for(char*p=maps;*p;){const char*q=p;u32 lo,hi;if(hex(&q,&lo)&&*q++=='-'&&hex(&q,&hi)&&*q++==' '&&*q=='r'&&lo<=at&&at+n<=hi)return 1;while(*p&&*p!='\n')p++;if(*p)p++;}return 0;
 }
 static int getfile(const char*name,void*out,unsigned cap){int f=open(name,O_RDONLY);if(f<0)return -1;unsigned used=0;int n;while(used<cap){n=read(f,(char*)out+used,cap-used);if(n<0){close(f);return -1;}if(!n)break;used+=(unsigned)n;}close(f);return (int)used;}
+static u32 library_base(const char *name)
+{
+ u32 base=0; unsigned matches=0;
+ for(char *line=maps; *line;){
+  char *end=line; while(*end&&*end!='\n')end++;
+  char saved=*end; *end=0;
+  const char *field=line; u32 lo,hi,offset;
+  if(hex(&field,&lo)&&*field++=='-'&&hex(&field,&hi)&&*field++==' '&&
+     hi>lo&&end-field>=5&&equal(field,"r-xp ",5)){
+   field+=5;
+   if(hex(&field,&offset)&&offset==0&&ends(field,name)){base=lo;matches++;}
+  }
+  *end=saved; line=saved?end+1:end;
+ }
+ return matches==1?base:0;
+}
+static int read_at(int mem,u32 address,void *out,unsigned size)
+{
+ return readable(address,size)&&pread64(mem,out,size,(u64)address)==(int)size;
+}
+static int ftp_master(int mem,u32 base)
+{
+ /* The stock 2.00 menu setter writes item 4 of its FTP settings cache.
+  * Only follow that row's exact relocated pointer. Zero is uninitialized.
+  */
+ const u32 cache=0xd3cf98,slot=0xcce200;
+ const unsigned char setter[16]={0x40,0xf2,0x01,0x11,0x80,0xf6,0xb4,0xe7,0x04,0x20,0x21,0x46,0x7b,0xf6,0xc2,0xe4};
+ const unsigned char update[16]={0x10,0x4b,0xe3,0x58,0x1b,0x68,0x9d,0x42,0x10,0xda,0x0f,0x4b,0x18,0x22,0xe3,0x58};
+ unsigned char code[16], pointer[4], value[4], again[4];
+ if(!base||base>0xffffffffU-cache-4||
+    !read_at(mem,base+0x704f3a,code,sizeof code)||!equal(code,setter,sizeof code)||
+    !read_at(mem,base+0x56bf60,code,sizeof code)||!equal(code,update,sizeof code)||
+    !read_at(mem,base+slot,pointer,4)||le(pointer)!=base+cache||
+    !read_at(mem,base+cache,value,4)||
+    !read_at(mem,base+slot,again,4)||!equal(pointer,again,4)||
+    !read_at(mem,base+cache,again,4)||!equal(value,again,4))return 95;
+ switch(le(value)){
+  case 1: return write(1,"off\n",4)==4?0:74;
+  case 2: return write(1,"on\n",3)==3?0:74;
+  default: return 95;
+ }
+}
 /* Sony standby freezes the system clocks. Network device generation survives
  * that ambiguity; the worker supplies its previous value across wait calls. */
 static unsigned link_index(void){
@@ -45,7 +87,8 @@ static unsigned link_index(void){
 }
 int main(int argc,char **argv){
  unsigned seconds=0,link_seen=0,link_current=0;int waiting=0;
- if(argc!=2){
+ int ftp_query=argc==3&&!strcmp(argv[2],"ftp-master");
+ if(argc!=2&&!ftp_query){
   if(argc!=4&&argc!=5)return 64;
   if(!strcmp(argv[2],"wait"))waiting=1;else if(strcmp(argv[2],"watch"))return 64;
   if(argc!=(waiting?5:4))return 64;
@@ -65,18 +108,10 @@ int main(int argc,char **argv){
  if(pid<=1||pid>2147483647U)return 64;
  snprintf(path,sizeof path,A7C_PROC_ROOT "/%u/comm",pid);char comm[16];int n=getfile(path,comm,sizeof comm-1);if(n<0)return 72;comm[n]=0;if(strcmp(comm,"im.elf\n"))return 95;
  snprintf(path,sizeof path,A7C_PROC_ROOT "/%u/maps",pid);n=getfile(path,maps,sizeof maps-1);if(n<=0||n==(int)sizeof maps-1)return 95;maps[n]=0;
- u32 base=0;unsigned matches=0;
- for(char*p=maps;*p;){char*q=p;while(*q&&*q!='\n')q++;char saved=*q;*q=0;
-  const char*t=p;u32 lo,hi,off;
-  if(hex(&t,&lo)&&*t++=='-'&&hex(&t,&hi)&&*t++==' '){
-   if(t[0]=='r'&&t[1]=='-'&&t[2]=='x'&&t[3]=='p'&&t[4]==' '){t+=5;
-    if(hex(&t,&off)&&off==0&&ends(t," /usr/lib/libmpr.so")){base=lo;matches++;}
-   }
-  }
-  *q=saved;p=saved?q+1:q;
- }
- if(matches!=1||base>0xffffffffU-0x153643cU||!readable(base+0x1536438,4))return 95;
+ u32 base=library_base(ftp_query?" /usr/lib/viewUnified2.so":" /usr/lib/libmpr.so");
+ if(!base||(!ftp_query&&(base>0xffffffffU-0x153643cU||!readable(base+0x1536438,4))))return 95;
  snprintf(path,sizeof path,A7C_PROC_ROOT "/%u/mem",pid);int mem=open(path,O_RDONLY);if(mem<0)return 72;
+ if(ftp_query){int rc=ftp_master(mem,base);close(mem);return rc;}
  unsigned char code[16],ptr[4],before[4],signature[112],previous[112];int rc=95,have=0,activity=0;int owner=getppid();unsigned emissions=0,samples=0;u32 started=millis();struct timespec cpu_start,cpu_end;int cpu_ok=!clock_gettime(2,&cpu_start);
  if(pread64(mem,code,16,(u64)base+0x8a9fe4)!=16||!equal(code,entry,16))goto done;
  for(;;){

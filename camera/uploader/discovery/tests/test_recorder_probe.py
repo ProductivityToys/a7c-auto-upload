@@ -48,6 +48,29 @@ class RecorderProbeTests(unittest.TestCase):
    p=self.run_probe(pid);self.assertEqual(p.returncode,64)
   with (self.pid/'maps').open('a') as f:f.write('03000000-04550000 r-xp 00000000 00:00 1 /usr/lib/libmpr.so\n')
   p=self.run_probe();self.assertEqual(p.returncode,95)
+ def test_native_ftp_master_reads_only_validated_view_cache(self):
+  base=0x3000000
+  with (self.pid/'maps').open('a') as f:
+   f.write('03000000-03ae4000 r-xp 00000000 00:00 2 /usr/lib/viewUnified2.so\n'
+           '03ae4000-03da0000 rw-p 00ae4000 00:00 2 /usr/lib/viewUnified2.so\n')
+  def put(offset,data):
+   with (self.pid/'mem').open('r+b') as f:
+    f.seek(base+offset);f.write(data)
+  put(0x704f3a,bytes.fromhex('40f2011180f6b4e7042021467bf6c2e4'))
+  put(0x56bf60,bytes.fromhex('104be3581b689d4210da0f4b1822e358'))
+  put(0xcce200,struct.pack('<I',base+0xd3cf98))
+  def read_switch():
+   p=subprocess.run([str(self.binary),'162','ftp-master'],capture_output=True,text=True,timeout=2)
+   return p.returncode,p.stdout
+  for value,expected in [(2,(0,'on\n')),(1,(0,'off\n')),(0,(95,'')),(3,(95,''))]:
+   put(0xd3cf98,struct.pack('<I',value))
+   self.assertEqual(read_switch(),expected)
+  put(0xd3cf98,struct.pack('<I',2))
+  put(0xcce200,struct.pack('<I',base+0xd3cf9c))
+  self.assertEqual(read_switch(),(95,''))
+  put(0xcce200,struct.pack('<I',base+0xd3cf98))
+  put(0x56bf60,b'X')
+  self.assertEqual(read_switch(),(95,''))
  def test_watch_only_emits_changes_and_reports_cpu_time(self):
   p=subprocess.Popen([str(self.binary),'162','watch','2'],stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
   time.sleep(.3)

@@ -16,9 +16,11 @@ class FtpSettings:
     directory: str
     password: str = field(repr=False, compare=False)
     photos: bool = False
+    pause_photos_for_native_ftp: bool | None = None
 
     def validate_target(self):
-        if not isinstance(self.photos, bool):
+        if (not isinstance(self.photos, bool) or
+                (self.pause_photos_for_native_ftp is not None and not isinstance(self.pause_photos_for_native_ftp, bool))):
             raise InstallerError("图片上传开关须为布尔值。")
         try:
             address = ipaddress.IPv4Address(self.host)
@@ -45,10 +47,15 @@ class FtpSettings:
 
     def camera_files(self):
         self.validate()
-        text = f"a7c-plainftp-v1\n{self.host}\n{self.port}\n{self.username}\n{self.directory}\n"
-        if self.photos:
-            text = text.replace("a7c-plainftp-v1\n", "a7c-plainftp-v2\n", 1) + "1\n"
+        target = f"{self.host}\n{self.port}\n{self.username}\n{self.directory}\n"
+        if self.pause_photos_for_native_ftp is not None:
+            text = f"a7c-plainftp-v3\n{target}{int(self.photos)}\n{int(self.pause_photos_for_native_ftp)}\n"
+        elif self.photos:
+            text = f"a7c-plainftp-v2\n{target}1\n"
+        else:
+            text = f"a7c-plainftp-v1\n{target}"
         return {"config": text.encode("ascii"), "password": self.password.encode("utf-8") + b"\n"}
 
     def public(self):
-        return {"host": self.host, "port": self.port, "username": self.username, "directory": self.directory, "photos": self.photos}
+        return {"host": self.host, "port": self.port, "username": self.username, "directory": self.directory,
+                "photos": self.photos, "pause_photos_for_native_ftp": self.pause_photos_for_native_ftp}

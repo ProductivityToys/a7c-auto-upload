@@ -168,14 +168,25 @@ class Window(QMainWindow):
         note.setWordWrap(True)
         form.addRow(note)
         setup.addWidget(ftp)
+        features = Bundle().manifest.get('features', [])
         self.photos = QCheckBox("同时上传图片（JPEG 和 RAW）")
-        self.photos.setToolTip("补传卡上已有图片并上传新增图片。请避免同时启用原厂照片自动传输。")
-        self.photos.setVisible('photos-jpeg-arw' in Bundle().manifest.get('features', []))
+        self.photos.setToolTip("补传卡上已有图片并上传新增图片。")
+        self.photos.setVisible('photos-jpeg-arw' in features)
         setup.addWidget(self.photos)
-        photos_note = QLabel("如果照片使用相机自带的 FTP 上传，可保持关闭；开启后，本程序也会上传 JPEG 和 RAW。")
+        self.pause_photos = QCheckBox("原厂 FTP 开启时，暂停本服务的照片上传")
+        self.pause_photos.setToolTip("原厂 FTP 关闭后自动恢复照片上传。视频始终由本服务上传。")
+        self.supports_photo_pause = 'photo-native-ftp-pause' in features
+        self.pause_photos.setVisible(self.supports_photo_pause)
+        self.pause_photos.setChecked(self.supports_photo_pause)
+        self.photos.toggled.connect(lambda checked: self.pause_photos.setEnabled(checked and self.photos.isEnabled()))
+        pause_row = QHBoxLayout()
+        pause_row.setContentsMargins(22, 0, 0, 0)
+        pause_row.addWidget(self.pause_photos)
+        setup.addLayout(pause_row)
+        photos_note = QLabel("如果照片始终交给相机自带的 FTP，可关闭「同时上传图片」。")
         photos_note.setObjectName('muted')
         photos_note.setWordWrap(True)
-        photos_note.setVisible('photos-jpeg-arw' in Bundle().manifest.get('features', []))
+        photos_note.setVisible('photos-jpeg-arw' in features)
         setup.addWidget(photos_note)
         self.display = QCheckBox("在相机上显示上传状态和进度")
         self.display.setChecked(True)
@@ -303,6 +314,7 @@ class Window(QMainWindow):
     def set_fields_enabled(self, enabled):
         for field in (self.host, self.port, self.username, self.password, self.directory, self.test_button, self.display, self.photos):
             field.setEnabled(enabled)
+        self.pause_photos.setEnabled(enabled and self.photos.isChecked())
 
     def clear_test_result(self):
         self.test_result.clear()
@@ -317,6 +329,8 @@ class Window(QMainWindow):
         self.clear_test_result()
         self.loaded_ftp = dict(config) if config else None
         self.photos.setChecked(bool(config and config.get('photos', False)))
+        saved_pause = (config or {}).get('pause_photos_for_native_ftp')
+        self.pause_photos.setChecked(self.supports_photo_pause and saved_pause is not False)
         if config:
             self.host.setText(config['host'])
             self.port.setValue(config['port'])
@@ -334,8 +348,10 @@ class Window(QMainWindow):
         HelpDialog(self).exec()
 
     def settings(self):
+        pause = self.pause_photos.isChecked() if self.supports_photo_pause else None
         value = FtpSettings(self.host.text().strip(), self.port.value(), self.username.text(),
-                            self.directory.text(), self.password.text(), photos=self.photos.isChecked())
+                            self.directory.text(), self.password.text(), photos=self.photos.isChecked(),
+                            pause_photos_for_native_ftp=pause)
         if self.loaded_ftp and not value.password:
             return value.validate_target()
         return value.validate()

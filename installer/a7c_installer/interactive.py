@@ -36,16 +36,23 @@ def prompt_settings(saved, ask=input, secret=getpass.getpass):
         raise InstallerError('端口须为数字。') from None
     username = field('用户名', 'username')
     directory = field('FTP 目录', 'directory', '/')
-    photos = bool(saved.get('photos', False))
-    choice = ask('同时上传图片（JPEG 和 RAW） [' + ('Y/n' if photos else 'y/N') + ']：').strip().lower()
-    if choice in ('y', 'yes', '1', '是'):
-        photos = True
-    elif choice in ('n', 'no', '0', '否'):
-        photos = False
-    elif choice:
-        raise InstallerError('图片上传选项请输入 y 或 n，留空沿用。')
+    def switch(label, current):
+        answer = ask(label + (' [Y/n]：' if current else ' [y/N]：')).strip().lower()
+        if answer in ('y', 'yes', '1', '是'):
+            return True
+        if answer in ('n', 'no', '0', '否'):
+            return False
+        if answer:
+            raise InstallerError('图片上传选项请输入 y 或 n，留空沿用。')
+        return current
+
+    photos = switch('同时上传图片（JPEG 和 RAW）', bool(saved.get('photos', False)))
+    pause_photos = saved.get('pause_photos_for_native_ftp')
+    if photos:
+        pause_photos = switch('原厂 FTP 开启时，暂停本服务的照片上传', pause_photos is not False)
     password = secret('FTP 密码（留空沿用相机已保存密码）：' if saved else 'FTP 密码：')
-    settings = FtpSettings(host, port, username, directory, password, photos=photos)
+    settings = FtpSettings(host, port, username, directory, password, photos=photos,
+                           pause_photos_for_native_ftp=pause_photos)
     preserve = bool(saved) and not password
     (settings.validate_target() if preserve else settings.validate())
     return settings, preserve

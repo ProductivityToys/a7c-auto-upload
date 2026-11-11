@@ -40,12 +40,16 @@ class InteractiveTests(unittest.TestCase):
         self.assertNotIn('replacement-secret', repr(settings))
     def test_photo_choice_can_enable_disable_or_preserve_saved_setting(self):
         from dataclasses import replace
-        for saved, answer, expected in [(SETTINGS.public(), 'y', True),
-                                         (replace(SETTINGS, photos=True).public(), '', True),
-                                         (replace(SETTINGS, photos=True).public(), 'n', False)]:
-            answers = iter(['', '', '', '', answer])
+        for saved, answer, expected, pause in [
+            (SETTINGS.public(), 'y', True, True),
+            (replace(SETTINGS, photos=True).public(), '', True, True),
+            (replace(SETTINGS, photos=True, pause_photos_for_native_ftp=False).public(), '', True, False),
+            (replace(SETTINGS, photos=True).public(), 'n', False, None),
+        ]:
+            answers = iter(['', '', '', '', answer, ''])
             settings, preserve = interactive.prompt_settings(saved, ask=lambda _: next(answers), secret=lambda _: '')
             self.assertEqual(settings.photos, expected)
+            self.assertIs(settings.pause_photos_for_native_ftp, pause)
             self.assertTrue(preserve)
 
     def test_connect_then_update_reuses_secret_without_echo(self):

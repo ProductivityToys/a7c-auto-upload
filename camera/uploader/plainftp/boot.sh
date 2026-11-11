@@ -24,12 +24,18 @@ boot_mark() {
 }
 private "$C" drwx------ && private "$C/config" -rw------- && private "$C/password" -rw------- && private "$C/manifest" -rw------- || fail permissions
 [ "$($B wc -c < "$C/config")" -le 1024 ] && [ "$($B wc -c < "$C/password")" -le 257 ] || fail length
-photos=0
+photos=0; pause_native_ftp=0
 {
  IFS= read -r version && IFS= read -r host && IFS= read -r port && IFS= read -r user && IFS= read -r root || fail config
  case "$version" in
   a7c-plainftp-v1) ;;
-  a7c-plainftp-v2) IFS= read -r photos || fail config; case "$photos" in 0|1) ;; *) fail photos;; esac;;
+  a7c-plainftp-v2|a7c-plainftp-v3)
+   IFS= read -r photos || fail config
+   case "$photos" in 0|1) ;; *) fail photos;; esac
+   if [ "$version" = a7c-plainftp-v3 ]; then
+    IFS= read -r pause_native_ftp || fail config
+    case "$pause_native_ftp" in 0|1) ;; *) fail photos;; esac
+   fi;;
   *) fail version;;
  esac
  ! IFS= read -r extra
@@ -86,4 +92,4 @@ fi
 $B rmdir "$D/plain.bootstrap.lock" || fail release
 trap - EXIT
 boot_mark worker_exec
-exec /bin/ash "$D/plain-worker.sh" "$host" "$port" "$user" "$root" "$photos" < "$C/password"
+exec /bin/ash "$D/plain-worker.sh" "$host" "$port" "$user" "$root" "$photos" "$pause_native_ftp" < "$C/password"

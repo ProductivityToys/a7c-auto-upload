@@ -31,6 +31,16 @@ class BootTests(unittest.TestCase):
   r=self.run_boot();self.assertEqual(r.returncode,42,r.stderr+r.stdout)
   self.write('config',(self.c/'config').read_text().replace('\n1\n','\n2\n'))
   self.assertEqual(self.run_boot().returncode,90)
+ def test_native_ftp_pause_config_is_passed_to_worker(self):
+  config='a7c-plainftp-v3\n127.0.0.1\n21\nuploader\n/upload with spaces\n1\n'
+  worker=self.files['plain-worker.sh'].replace('echo started','[ "$5:$6" = 1:1 ] || exit 94\necho started')
+  self.files['plain-worker.sh']=worker;self.write('plain-worker.sh',worker)
+  self.write('manifest',''.join(hashlib.sha256(v.encode()).hexdigest()+' '+n+'\n' for n,v in self.files.items()))
+  self.write('config',config+'1\n')
+  self.assertEqual(self.run_boot().returncode,42)
+  for suffix in ('','x\n','1\nextra\n'):
+   self.write('config',config+suffix)
+   self.assertEqual(self.run_boot().returncode,90)
  def test_no_owned_mount_or_busy_copy_rejected(self):
   self.mounts.write_text('other '+str(self.d)+' tmpfs rw 0 0\n');self.assertEqual(self.run_boot().returncode,90);self.assertEqual(list(self.d.iterdir()),[])
   self.mounts.write_text('a7c-upload-ram '+str(self.d)+' tmpfs rw 0 0\n');os.mkfifo(self.d/'source.fifo');self.assertEqual(self.run_boot().returncode,90);self.assertTrue((self.d/'source.fifo').is_fifo())

@@ -44,10 +44,13 @@ def parse_settings(camera):
         lines = data.decode("ascii").splitlines()
         v1 = len(lines) == 5 and lines[0] == "a7c-plainftp-v1"
         v2 = len(lines) == 6 and lines[0] == "a7c-plainftp-v2" and lines[5] in ("0", "1")
-        if not (v1 or v2) or not secret.endswith(b"\n"):
+        v3 = (len(lines) == 7 and lines[0] == "a7c-plainftp-v3"
+              and all(line in ("0", "1") for line in lines[5:]))
+        if not (v1 or v2 or v3) or not secret.endswith(b"\n"):
             raise ValueError()
         return FtpSettings(lines[1], int(lines[2]), lines[3], lines[4], secret[:-1].decode("utf-8"),
-                           photos=v2 and lines[5] == "1").validate()
+                           photos=(v2 or v3) and lines[5] == "1",
+                           pause_photos_for_native_ftp=(lines[6] == "1") if v3 else None).validate()
     except (ValueError, UnicodeError):
         raise InstallerError("现有 FTP 配置格式异常；请填写新配置。") from None
 
@@ -192,7 +195,8 @@ class Installer:
         self.log("已暂停自启，等待现有上传与显示合作退出")
         self.camera.quiesce(retire_display=retire_display)
 
-    def install(self, settings=None, reuse=False, display=True, preserve_password=False, expected_config=None, photos=None):
+    def install(self, settings=None, reuse=False, display=True, preserve_password=False, expected_config=None,
+                photos=None, pause_photos_for_native_ftp=None):
         self.verify_firmware()
         self.ownership()
         if self.camera.exists(PENDING):
@@ -203,8 +207,16 @@ class Installer:
         settings = self.resolve_settings(settings, preserve_password, expected_config)
         if photos is not None:
             settings = replace(settings, photos=photos).validate()
-        if settings.photos and 'photos-jpeg-arw' not in self.bundle.manifest.get('features', []):
+        if pause_photos_for_native_ftp is not None:
+            settings = replace(settings, pause_photos_for_native_ftp=pause_photos_for_native_ftp).validate()
+        features = self.bundle.manifest.get('features', [])
+        if settings.photos and 'photos-jpeg-arw' not in features:
             raise InstallerError('当前相机载荷不含图片上传，请使用图片支持版本的完整安装包。')
+        supports_pause = 'photo-native-ftp-pause' in features
+        if settings.pause_photos_for_native_ftp and not supports_pause:
+            raise InstallerError('当前安装包不支持根据原厂 FTP 开关暂停照片上传。')
+        pause = settings.pause_photos_for_native_ftp is not False if supports_pause else None
+        settings = replace(settings, pause_photos_for_native_ftp=pause)
         self.log("测试 FTP 目标目录：创建、长度确认并删除小测试文件")
         self.ftp_test(settings)
         self.prepare_directories()

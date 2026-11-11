@@ -1,4 +1,5 @@
 import copy
+from dataclasses import replace
 import json
 from pathlib import Path
 import re
@@ -16,6 +17,7 @@ from a7c_installer.operations import (Installer, LOADER, ENABLE, DISPLAY_ENABLE,
 
 
 SETTINGS = FtpSettings("192.168.1.20", 21, "camera-upload", "/Camera", "secret-$-中文")
+DEFAULT_SETTINGS = replace(SETTINGS, pause_photos_for_native_ftp=True)
 
 
 class MemoryCamera:
@@ -157,7 +159,7 @@ class TransactionTests(unittest.TestCase):
         self.assertEqual(self.camera.files["/mnt/sd/DCIM/photo.JPG"], b"KEEP")
         self.assertNotIn(SETTINGS.password, "\n".join(self.logs) + json.dumps(result))
         self.assertFalse(self.camera.exists(PENDING))
-        self.assertEqual(self.tested, [SETTINGS])
+        self.assertEqual(self.tested, [DEFAULT_SETTINGS])
 
     def test_activation_failure_keeps_committed_install_and_backup(self):
         self.camera.start_failure = True
@@ -242,7 +244,7 @@ class TransactionTests(unittest.TestCase):
         self.installer.install(reuse=True, display=False)
         self.assertEqual(self.camera.files[PASSWORD], SETTINGS.password.encode() + b"\n")
         self.assertFalse(self.camera.exists(DISPLAY_ENABLE))
-        self.assertEqual(self.tested, [SETTINGS, SETTINGS])
+        self.assertEqual(self.tested, [DEFAULT_SETTINGS, DEFAULT_SETTINGS])
     def test_enable_photos_with_saved_secret_and_readback_then_disable(self):
         self.bundle.manifest['features'] = ['photos-jpeg-arw']
         self.installer.install(SETTINGS)
@@ -261,11 +263,23 @@ class TransactionTests(unittest.TestCase):
             self.installer.install(SETTINGS, photos=True)
         self.assertEqual(self.camera.events, [])
 
+    def test_native_ftp_photo_pause_round_trips_with_saved_configuration(self):
+        legacy = replace(SETTINGS, photos=True)
+        self.installer.install(legacy)
+        self.assertEqual(self.camera.files[CONFIG], replace(DEFAULT_SETTINGS, photos=True).camera_files()['config'])
+        self.camera.files[CONFIG] = legacy.camera_files()['config']
+        self.assertIsNone(self.installer.inspect()['ftp']['pause_photos_for_native_ftp'])
+        self.assertTrue(self.installer.install(reuse=True)['ftp']['pause_photos_for_native_ftp'])
+        self.installer.install(reuse=True, pause_photos_for_native_ftp=False)
+        self.assertFalse(self.installer.inspect()['ftp']['pause_photos_for_native_ftp'])
+        self.assertEqual(self.camera.files[CONFIG].splitlines()[-2:], [b'1', b'0'])
+        self.assertFalse(self.installer.install(reuse=True)['ftp']['pause_photos_for_native_ftp'])
+
     def test_empty_password_update_preserves_saved_secret(self):
         from dataclasses import replace
-        self.installer.install(SETTINGS)
+        saved = self.installer.install(SETTINGS)['ftp']
         changed = replace(SETTINGS, directory='/Other', password='')
-        result = self.installer.install(changed, preserve_password=True, expected_config=SETTINGS.public())
+        result = self.installer.install(changed, preserve_password=True, expected_config=saved)
         self.assertEqual(self.camera.files[PASSWORD], SETTINGS.password.encode() + b'\n')
         self.assertEqual(result['ftp']['directory'], '/Other')
         self.assertNotIn(SETTINGS.password, json.dumps(result))
@@ -278,8 +292,7 @@ class TransactionTests(unittest.TestCase):
 
     def test_changed_camera_config_rejects_implicit_password_reuse(self):
         from dataclasses import replace
-        self.installer.install(SETTINGS)
-        original = SETTINGS.public()
+        original = self.installer.install(SETTINGS)['ftp']
         self.installer.install(replace(SETTINGS, username='another-account'))
         self.camera.events.clear()
         with self.assertRaisesRegex(InstallerError, '配置已变化'):

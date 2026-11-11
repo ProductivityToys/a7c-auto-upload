@@ -44,7 +44,7 @@ The stock FTP Function does not need to be on. To remote-control from a computer
 
 From then on just shoot as usual: a small mark in the lower-left corner means the service is running; during an upload it turns into a progress bar and returns to the mark when done.
 Existing videos are back-filled and new videos are uploaded automatically; with photos enabled, existing and new JPEG / ARW files are handled too. Originals stay on the card and failed uploads are retried.
-When this project uploads photos, avoid also enabling the stock automatic photo transfer.
+With photo upload enabled, the option to pause this service's photo uploads while stock FTP is on is checked by default. Stock FTP handles photos while its switch is on; when it is off, this service resumes the pending photos on the card. Video uploads continue in either case.
 
 | Service-running mark | Upload progress bar |
 | :---: | :---: |
@@ -75,6 +75,7 @@ From the scripts package root: sh start.sh <action>
 On Windows: powershell -NoProfile -ExecutionPolicy Bypass -File .\app\install.ps1 <action>
 With an existing configuration use install --reuse --yes; with the current version already installed use start.
 Photos are off by default; add --photos to enable or --no-photos to disable; when updating without either flag the existing choice is kept.
+Pausing photo uploads while stock FTP is on is enabled by default; use --no-pause-photos-for-native-ftp to disable it. Later updates preserve that choice.
 
 After installing, check service_started, health.state and requires_power_cycle before telling me it is ready.
 Do not report success from exit code 0 alone. Only ask me to act when cabling, authorization or secure input is needed.

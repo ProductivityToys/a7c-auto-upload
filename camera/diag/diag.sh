@@ -101,6 +101,9 @@ case "$1" in
   section copy "$R/copy.log" 1024
   section relay "$R/relay.log" 1024
   section relay.result "$R/relay.result" 256
+  section relay.ready "$R/relay.ready" 64
+  section copy.done "$R/copy.done" 64
+  section guard.done "$R/guard.done" 64
   section scan-lease "$R/scan-lease.log" 512
   section pending-rows "$R/plain.pending" 2048
   section native-start "$G/native-start.log" 1024
@@ -126,9 +129,20 @@ case "$1" in
   status;;
  START)
   [ -f "$U/enabled" ] && [ -f "$U/supervisor.sh" ] || { echo 'start=disabled'; status; exit 3; }
-  for path in "$R/supervisor.lock" "$R/lock" "$R/source.fifo" "$R/network.fifo" "$R/plain.bootstrap.lock" "$R/display-bootstrap.lock"; do
+  for path in "$R/supervisor.lock" "$R/lock" "$R/plain.bootstrap.lock" "$R/display-bootstrap.lock"; do
    [ ! -e "$path" ] || { echo "start=busy ${path#$R/}"; status; exit 2; }
   done
+  if [ -e "$R/source.fifo" ] || [ -e "$R/network.fifo" ]; then
+   # A failed pre-copy FTP connection could leave these pipes after both
+   # worker and guardian completed. Only that completed transaction may be
+   # retired here; an uncertain native writer keeps its readers untouched.
+   if [ -p "$R/source.fifo" ] && [ -p "$R/network.fifo" ] &&
+      [ -f "$R/copy.done" ] && [ -f "$R/guard.done" ] &&
+      $B grep -qx 'normal\|recovered' "$R/guard.done"; then
+    $B rm -f "$R/source.fifo" "$R/network.fifo" || exit 2
+    echo 'start_cleanup=completed_transfer'
+   else echo 'start=busy transfer_incomplete'; status; exit 2; fi
+  fi
   [ ! -d "$G/maintenance" ] || echo 'start_warning=display_lock_held cold_restart_needed'
   ( trap '' HUP; exec /bin/ash "$U/supervisor.sh" --start </dev/null >/dev/null 2>&1 ) &
   $B sleep 4

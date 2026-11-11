@@ -8,9 +8,9 @@ D=/setting/a7c-uploader/ram
 umask 077
 . "$D/plain-runtime.sh" || exit 90
 HOST=$1; PORT=$2; USER=$3; ROOT=$4
-PHOTOS=${5:-0}
-[ "$#" = 4 ] || [ "$#" = 5 ] || exit 64
-case "$PHOTOS" in 0|1) ;; *) exit 64;; esac
+PHOTOS=${5:-0}; PAUSE_NATIVE_FTP=${6:-0}
+[ "$#" -ge 4 ] && [ "$#" -le 6 ] || exit 64
+case "$PHOTOS:$PAUSE_NATIVE_FTP" in [01]:[01]) ;; *) exit 64;; esac
 $B grep -q '^a7c-upload-ram /setting/a7c-uploader/ram tmpfs ' /proc/mounts || exit 90
 $B mkdir "$D/lock" || exit 90
 echo "$$" > "$D/plain.worker.pid"
@@ -380,6 +380,9 @@ plain_transfer_body() {
  if [ "$relay_rc" != 0 ]; then kill -TERM "$ftp_pid" 2>/dev/null; fi
  wait_child "$ftp_pid"; ftp_rc=$CHILD_RC
  [ "$ftp_rc" = 0 ] || FTP_TRANSPORT_FAILED=1
+ if [ "$copy_rc" != 0 ] || [ "$relay_rc" != 0 ] || [ "$ftp_rc" != 0 ]; then
+  log "FTP_TRANSFER_RESULT copy=$copy_rc relay=$relay_rc ftp=$ftp_rc"
+ fi
  cleanup_completed_fifos || return 90
  [ "$copy_rc" = 0 ] && [ "$relay_rc" = 0 ] && [ "$ftp_rc" = 0 ] || { [ "$ftp_rc" != 90 ] || return 90; return 1; }
  read BAD COUNT EXTRA < "$D/relay.result"
@@ -483,6 +486,29 @@ choose_row() {
   priority=new_or_changed
  elif [ -s "$D/plain.pending" ]; then
   IFS= read -r chosen < "$D/plain.pending" || return 90
+ fi
+ if [ "${PAUSE_NATIVE_FTP:-0}" = 1 ]; then
+  case "$chosen" in
+   DCIM/*)
+    local native_state list select_rc
+    native_state=$("$D/discovery" "$($B pidof im.elf)" ftp-master) || native_state=unknown
+    if [ "${NATIVE_FTP_STATE:-}" != "$native_state" ]; then
+     log "NATIVE_FTP_PHOTOS $native_state"
+     NATIVE_FTP_STATE=$native_state
+    fi
+    if [ "$native_state" = on ]; then
+     # Keep deferred photos pending, with no success receipt. A video may
+     # still be ready, including old video behind a newly captured photo.
+     for list in new pending; do
+      chosen=$($B grep -m 1 -v '^DCIM/' "$D/plain.$list"); select_rc=$?
+      case "$select_rc" in
+       0) priority=recheck; [ "$list" != new ] || priority=new_or_changed; break;;
+       1) ;;
+       *) return 90;;
+      esac
+     done
+    fi;;
+  esac
  fi
  return 0
 }

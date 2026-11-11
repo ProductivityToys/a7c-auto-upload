@@ -123,6 +123,37 @@ exit $run_rc
         self.assertEqual(attempts,["0 card "+a,"1 card "+c,"2 card "+b])
         self.assertEqual(self.known,[a,b,c])
 
+    def test_native_ftp_defers_photos_but_keeps_videos_and_resumes_photos(self):
+        jpeg = "DCIM/100MSDCF/DSC00001.JPG 24 - 0 2026-10-20T11:00:00 -"
+        raw = jpeg.replace(".JPG", ".ARW")
+        video = row(1)
+        steps = [(0, "card", [jpeg, raw, video], True, 0),
+                 (1, "card", [jpeg, raw, video], True, 0),
+                 (2, "card", [jpeg, raw, video], True, 0),
+                 (3, "card", [jpeg, raw, video], True, 0)]
+        attempts, _ = self.run_steps(steps, prelude="""
+PAUSE_NATIVE_FTP=1
+discovery_wait() { return 0; }
+cat > "$D/discovery" <<'PROBE'
+#!/bin/sh
+[ "$2" = ftp-master ] || exit 90
+n=$(cat "$TEST_RAM/native-reads" 2>/dev/null); n=$((${n:-0}+1))
+echo "$n" > "$TEST_RAM/native-reads"
+case "$n" in 1|2) echo on;; *) echo off;; esac
+PROBE
+chmod 700 "$D/discovery"
+""")
+        self.assertEqual(attempts, ["0 card " + video, "2 card " + jpeg, "3 card " + raw])
+        self.assertIn("NATIVE_FTP_PHOTOS on", self.events)
+        self.assertIn("NATIVE_FTP_PHOTOS off", self.events)
+
+    def test_native_ftp_unknown_keeps_configured_photo_upload(self):
+        photo = "DCIM/100MSDCF/DSC00001.JPG 24 - 0 2026-10-20T11:00:00 -"
+        attempts, _ = self.run_steps([(0, "card", [photo], True, 0)],
+                                     prelude="PAUSE_NATIVE_FTP=1; discovery_wait() { return 0; }")
+        self.assertEqual(attempts, ["0 card " + photo])
+        self.assertIn("NATIVE_FTP_PHOTOS unknown", self.events)
+
     def test_unchanged_success_survives_activity_unknown_gap_and_clock_rollback(self):
         a=row(1)
         for reset in [[(40,"card",[],False,0),(50,"card",[a],True,0)],

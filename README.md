@@ -44,7 +44,7 @@ GUI 自带运行环境，不需要安装 Python。
 
 之后正常拍摄视频即可：左下角小标记表示服务运行中，上传时变成进度条，完成后恢复小标记。
 程序会补传旧视频、自动上传新增视频；开启图片后，也会补传已有和新增 JPEG／ARW。卡上原文件保留，断网后重试。
-开启本程序的图片上传时，避免同时启用原厂照片自动传输。
+开启图片上传后，默认勾选「原厂 FTP 开启时，暂停本服务的照片上传」：原厂 FTP 开启时，照片交给原厂；关闭后，本服务继续补传卡上的照片。视频上传始终保留。
 
 | 服务运行标记 | 上传进度条 |
 | :---: | :---: |
@@ -75,6 +75,7 @@ GUI 自带运行环境，不需要安装 Python。
 Windows 使用：powershell -NoProfile -ExecutionPolicy Bypass -File .\app\install.ps1 <action>
 已有配置可用 install --reuse --yes；已有当前版本可用 start。
 图片默认关闭；需要时加 --photos，关闭用 --no-photos；更新时未指定则保留已有选择。
+原厂 FTP 开启时暂停照片上传的选项默认开启；如需关闭，加 --no-pause-photos-for-native-ftp，之后更新会保留该选择。
 
 安装后检查 service_started、health.state 和 requires_power_cycle，再告诉我是否已可使用。
 不要只根据退出码 0 报成功。只有需要接线、授权或安全输入时再请我操作。

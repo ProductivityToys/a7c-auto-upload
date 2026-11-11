@@ -38,7 +38,14 @@ int main(int argc,char**argv){
  if(!guard){close(p[1]);guardian(src,p[0]);}
  close(p[0]);int net=-1;u32 started=millis();
  while(millis()-started<10000){net=open(netpath,O_WRONLY|O_NONBLOCK);if(net>=0)break;usleep(50000);}
- if(net<0){close(p[1]);close(src);return 68;}
+ if(net<0){
+  /* No ready marker means the worker has not submitted native copy. Finish
+   * our guardian here instead of leaving its asynchronous empty drain to
+   * race the worker's FIFO cleanup after a failed FTP login/connect. */
+  write(p[1],"D",1);close(p[1]);close(src);
+  int status=0;while(waitpid(guard,&status,0)<0&&errno==EINTR){}
+  return 68;
+ }
  mark(ready,"ready\n");
 #ifndef RELAY_SIZE_ONLY
  Sha hash;sha_init(&hash);

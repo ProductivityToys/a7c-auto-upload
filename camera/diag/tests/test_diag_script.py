@@ -91,6 +91,33 @@ class LoadTests(unittest.TestCase):
 
 
 class StartGuardTests(unittest.TestCase):
+    def test_completed_fifo_recovery_and_incomplete_transaction_preservation(self):
+        import os
+        for completed, guard, locked, expected in (
+            (True, 'normal\n', False, 0),
+            (True, 'recovered\n', False, 0),
+            (False, 'recovered\n', False, 2),
+            (True, None, False, 2),
+            (True, 'unknown\n', False, 2),
+            (True, 'normal\n', True, 2),
+        ):
+            with self.subTest(completed=completed, guard=guard, locked=locked), tempfile.TemporaryDirectory() as tmp:
+                t = Path(tmp); u = t / 'setting/a7c-uploader'; r = u / 'ram'
+                (r / 'diag').mkdir(parents=True)
+                (u / 'enabled').touch(); (u / 'supervisor.sh').write_text('touch "$0.started"\n')
+                for name in ('source.fifo', 'network.fifo'): os.mkfifo(r / name)
+                if completed: (r / 'copy.done').touch()
+                if guard is not None: (r / 'guard.done').write_text(guard)
+                if locked: (r / 'lock').mkdir()
+                bb = t / 'bb'; bb.write_text('#!/bin/sh\n[ "$1" != sleep ] || exit 0\nexec "$@"\n'); bb.chmod(0o700)
+                script = (SRC / 'diag.sh').read_text().replace('B=/bin/busybox', f'B={bb}').replace('/setting/', f'{t}/setting/').replace('/bin/ash', '/bin/sh')
+                p = subprocess.run(['sh', '-s', 'START'], input=script, capture_output=True, text=True, timeout=10)
+                self.assertEqual(p.returncode, expected, p.stdout)
+                self.assertEqual((u / 'supervisor.sh.started').exists(), expected == 0)
+                for name in ('source.fifo', 'network.fifo'):
+                    self.assertEqual((r / name).exists(), expected != 0)
+                if expected == 0: self.assertIn('start_cleanup=completed_transfer', p.stdout)
+
     def test_busy_or_disabled_is_refused(self):
         import tempfile
         for make, expected in (('lock', 2), ('source.fifo', 2), (None, 3), ('idle', 0)):

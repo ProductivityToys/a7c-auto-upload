@@ -27,6 +27,8 @@ CLI 与 GUI 共用安装核心。推荐 AI 助手使用发行脚本包，按任�
 | 沿用本上传器保存的配置更新程序 | `sh start.sh install --reuse --yes` |
 | 开启 JPEG／ARW 图片上传 | `sh start.sh install --reuse --photos --yes` |
 | 关闭图片上传，保留视频 | `sh start.sh configure --reuse --no-photos --yes` |
+| 原厂 FTP 开启时暂停本服务照片上传 | `sh start.sh configure --reuse --pause-photos-for-native-ftp --yes` |
+| 不根据原厂 FTP 开关暂停照片 | `sh start.sh configure --reuse --no-pause-photos-for-native-ftp --yes` |
 | 启动已安装的当前版本 | `sh start.sh start` |
 | 读取固定白名单诊断记录 | `sh start.sh diagnose` |
 | 关闭自定义显示 | `sh start.sh configure --reuse --no-display --yes` |
@@ -37,7 +39,9 @@ CLI 与 GUI 共用安装核心。推荐 AI 助手使用发行脚本包，按任�
 
 Windows 卸载默认联动恢复本工具修改的 USB 驱动；需要保留时使用 `--keep-driver`。驱动恢复也可单独运行 `driver-restore --yes`。
 
-图片默认关闭；更新时未指定 `--photos` / `--no-photos` 则保留已有设置。`inspect` 的 `ftp.photos` 返回是否开启。开启后补传 DCIM 中已有和新增的 JPEG／ARW，RAW＋JPEG 各自上传、各自记录回执；不要同时启用原厂照片自动传输。
+图片默认关闭；更新时未指定 `--photos` / `--no-photos` 则保留已有设置。`inspect` 的 `ftp.photos` 返回是否开启。开启后补传 DCIM 中已有和新增的 JPEG／ARW，RAW＋JPEG 各自上传、各自记录回执。
+
+「原厂 FTP 开启时，暂停本服务的照片上传」默认开启，在图片上传开启时生效。按原厂总开关暂停或恢复，不比较 FTP 目录；视频不受影响，暂停的照片不写成功回执。可用上表两个参数显式设置，更新时保留用户已关闭的选择；旧配置没有该项时升级采用开启。`inspect` 的 `ftp.pause_photos_for_native_ftp` 返回保存值。
 
 ## 密码与输出
 
@@ -63,7 +67,7 @@ Windows 卸载默认联动恢复本工具修改的 USB 驱动；需要保留时�
 
 对外兼容性标注为：**2.00 已验证，其他固件版本未测试。**
 
-实现是否可复用取决于新版是否保留所依赖的原厂接口和程序布局。目前 preview.26 使用 2.00 适配清单：
+实现是否可复用取决于新版是否保留所依赖的原厂接口和程序布局。目前 preview.27 使用 2.00 适配清单：
 检查固件版本、内部接口布局及 9 项原厂依赖文件摘要，因此其他版本可能直接被当前安装器拦截。
 “未测试”不代表当前包已经允许安装所有新版，安装器会先检查实际兼容性。
 

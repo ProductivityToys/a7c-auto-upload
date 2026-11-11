@@ -62,14 +62,14 @@ class DetectionTests(unittest.TestCase):
         from a7c_installer.operations import Installer
         from unittest.mock import MagicMock
         camera = MemoryCamera(Bundle())
-        Installer(camera, ftp_test=lambda _: None).install(SETTINGS)
+        saved = Installer(camera, ftp_test=lambda _: None).install(SETTINGS)['ftp']
         session = MagicMock()
         session.__enter__.return_value = camera
         window = Window()
         with patch('a7c_installer.transport.sony_usb.SonyUsb', return_value=session):
             window.run_camera('connect')
             self.wait_task(window)
-        self.assertEqual(window.loaded_ftp, SETTINGS.public())
+        self.assertEqual(window.loaded_ftp, saved)
         self.assertEqual(window.host.text(), SETTINGS.host)
         self.assertEqual(window.password.text(), '')
         self.assertIn('已保存', window.password.placeholderText())
@@ -95,6 +95,25 @@ class DetectionTests(unittest.TestCase):
         self.assertEqual(window.settings().password, 'new-secret')
         self.close_window(window)
 
+    def test_native_ftp_photo_pause_is_a_saved_photo_sub_option(self):
+        from dataclasses import replace
+        from test_installer import SETTINGS
+        window = Window(demo=True)
+        self.assertTrue(window.pause_photos.isChecked())
+        self.assertFalse(window.pause_photos.isEnabled())
+        window.apply_saved_config(replace(SETTINGS, photos=True).public())
+        window.set_fields_enabled(True)
+        self.assertFalse(window.pause_photos.isHidden())
+        self.assertTrue(window.pause_photos.isEnabled())
+        self.assertTrue(window.settings().pause_photos_for_native_ftp)
+        window.apply_saved_config(replace(SETTINGS, photos=True, pause_photos_for_native_ftp=False).public())
+        self.assertFalse(window.settings().pause_photos_for_native_ftp)
+        window.photos.setChecked(False)
+        self.assertFalse(window.pause_photos.isEnabled())
+        window.photos.setChecked(True)
+        self.assertFalse(window.pause_photos.isChecked())
+        self.close_window(window)
+
     def test_target_resolves_saved_password_in_worker_only(self):
         from test_installer import MemoryCamera, SETTINGS, FakeFtp
         from a7c_installer.bundle import Bundle
@@ -102,9 +121,9 @@ class DetectionTests(unittest.TestCase):
         from a7c_installer.ftp_check import test_ftp
         from unittest.mock import MagicMock
         camera = MemoryCamera(Bundle())
-        Installer(camera, ftp_test=lambda _: None).install(SETTINGS)
+        saved = Installer(camera, ftp_test=lambda _: None).install(SETTINGS)['ftp']
         window = Window()
-        window.apply_saved_config(SETTINGS.public())
+        window.apply_saved_config(saved)
         session = MagicMock()
         session.__enter__.return_value = camera
         captured = []

@@ -1,55 +1,53 @@
 {
-  "installer_version": "0.1.0-preview.26",
-  "package_revision": "preview.26",
-  "payload_version": "0.4.2-photos.13-preview",
-  "payload_sha256": "d3644ad22b9173809f866fa1fca1971760e387cc53a0e1d78bbec117e7d61470",
+  "installer_version": "0.1.0-preview.27",
+  "package_revision": "preview.27",
+  "payload_version": "0.4.2-photos.15-preview",
+  "payload_sha256": "55da88b9f568d0d498a9f6141d0241844b19f7b878624b0424e9fbc64a51f80c",
   "payload_files": 22,
   "channel": "preview",
   "supported_model": "ILCE-7C",
   "supported_firmware": "2.00",
-  "build_date": "2026-11-05",
+  "build_date": "2026-11-11",
   "unit_tests": {
-    "macOS": 109,
-    "Windows": 108
+    "macOS": 111,
+    "Windows": 110
   },
   "macOS": {
     "arch": "arm64",
     "frozen_app_selfcheck": "Final frozen App, signature and embedded-file checks recorded in distributions.json",
     "signature": "ad-hoc; not notarized",
     "release_artifacts": "See distributions.json for final archive/entry checks; validation embedded before packaging.",
-    "source_tests": "109 passed"
+    "source_tests": "111 passed; current source tests and frozen checks recorded in distributions.json"
   },
   "Windows": {
     "arch": "x64",
-    "status": "108 source tests passed, one POSIX skip; previous Windows camera lifecycle retained; this payload device-tested via macOS",
+    "status": "110 source tests passed and one POSIX skip; existing Windows camera install/uninstall and driver acceptance retained; .15 camera runtime verified via macOS",
     "os": "11 build 26200",
     "signature": "unsigned preview",
-    "source_tests": "109 run, 108 passed, 1 POSIX launcher skipped; Windows 11 source test run on 2026-11-05",
+    "source_tests": "111 run, 110 passed, 1 POSIX launcher skipped; Windows 11 source test run on 2026-11-11",
     "frozen_app_selfcheck": "Final frozen EXE and embedded-file checks recorded in distributions.json"
   },
-  "native_display": "ABI21 drawing module unchanged byte-for-byte; external controller keeps the active guardian heartbeat alive during the photo-page redraw (fixes progress retired mid-upload, consumer rc 77). No idle redraw timer.",
+  "native_display": "ABI21 module and the display package are unchanged from the accepted .13 release; native progress bar and idle indicator restored after the tested RAW+JPEG uploads.",
   "privacy": {
     "no_camera_password_in_artifacts": true,
     "no_sony_libraries_fonts_media": true,
     "debug_listener_in_payload": false
   },
   "changes": [
-    "Fix photo-page progress failing mid-upload: the redraw wait now keeps the 3 s guardian heartbeat alive",
-    "Upload and display act as one service: a display failure finishes the current file, then stops the service (exit 91, no restart); stale display state is a failure, not a silent skip",
-    "SD root listings disturbed by native console messages are retried (75/76) instead of stopping the worker; genuine receipt conflicts still stop",
-    "Faster response: display start overlaps the pre-copy gate; recorder and card/open-handle checks run concurrently; photo-standby recorder sample authorises the SD receipt fast path",
-    "Lower idle load: quiet fallback scans step 30 s -> 60 s (photos) / 120 s (video only) after consecutive quiet results; settle re-checks end once the queue drains; unknown recorder layouts retry instead of polling for the whole session",
-    "FTP health retry capped at 2 min; per-upload phase timings and native query timings kept in a bounded RAM log",
-    "Installer: post-install health check bounded on the camera (no USB command timeout); held display lock reported as restart required; release payload contains no Wi-Fi diagnostics"
+    "Add a default-enabled option to pause this service photo uploads while the stock FTP Function is on; video uploads continue",
+    "Resume pending photo uploads when stock FTP is off; queued photos receive no success receipt while paused",
+    "Preserve an explicitly disabled pause option during configuration updates; photo upload itself stays off by default",
+    "Fix a pre-copy FTP connection failure leaving the relay guardian cleanup unfinished and stopping the service; failed connections remain retryable",
+    "No change to the native display module, Windows driver implementation or firmware compatibility checks; no Wi-Fi diagnostic listener in release payloads"
   ],
   "sharing_status": "Private GitHub prerelease; macOS arm64, Windows x64 and CLI scripts. Tested ILCE-7C2.00; other firmware untested.",
   "worker_tests": {
-    "macOS": 158,
-    "result": "passed; host C/shell/FTP integration; no camera I/O"
+    "macOS": 162,
+    "result": "passed; real host C/shell/FTP integration, including rejected pre-copy login, ARW retry and dedup; no camera I/O"
   },
   "native_start_tests": 1,
   "unit_test_skips": {
-    "Windows": "1 POSIX launcher test; 109 run, 108 passed; skipped case executed on macOS"
+    "Windows": "1 POSIX launcher test; 111 run, 110 passed; skipped case executed on macOS"
   },
   "script_acceptance": {
     "entrypoints": "macOS .command --help / menu start-exit and Windows CMD menu start-exit passed using prepared runtime and existing administrator session",
@@ -59,69 +57,25 @@
     "camera_acceptance_path": "Actual macOS and Windows CLI lifecycle tested; Windows C0258 new video20978709 bytes, SD UF786A6A.RCP and display cleanup0 accepted. Final frozen Windows .22 GUI connect, installed recognition, inline FTP result and disconnect passed; GUI install/uninstall buttons not separately claimed.",
     "next_device_acceptance": "No additional camera tests required for this packaging release; completed acceptance is recorded above."
   },
-  "discovery_tests": 14,
+  "discovery_tests": 15,
   "previous_camera_runtime_acceptance": {
-    "candidate_payload": "0.4.2-photos.5-preview",
-    "status": "110 backlog photo files accepted; .2 Wi-Fi update uploaded four new files with exact lengths, SD receipts and display cleanup; software reboot autostart and all192 prior media deduplicated",
-    "photo_directory": "55 JPEG/ARW pairs parsed from native IFSYS DCIM listing",
-    "photos_complete_observed": 110,
-    "photo_length_mismatches": 0,
-    "body_hash_or_readback": false,
-    "startup_wait": "Long initial wait observed; no runtime wait log collected; not attributed to a cause",
-    "sd_receipt_scope": "Direct .2 runtime logs: DSC05455.ARW UC5C33DA.RCP, JPG U8DD9A8A.RCP; DSC05454.ARW U2BF354A.RCP, JPG U9DA2CDA.RCP; DISPLAY_EXIT rc0",
-    "new_photo_detection": "Two new RAW+JPEG groups DSC05455 then DSC05454 accepted after still-mode gate fix",
-    "sleep_tests": "Not repeated per user request",
-    "release_scope": "Actual photo transfer and software reboot/dedup on .2; final .4 changes read-only hints/scheduling only; live runtime and final package checks in distributions.json",
-    "photos_jpeg": 55,
-    "photos_arw": 55,
-    "photo_total_bytes": 3480402997,
-    "photo_interruption_events": 0,
-    "photo_repeat_completions": 0,
-    "photo_parts_remaining": 0,
-    "photo_backlog_finished": "2026-11-05T01:15:00+08:00",
-    "still_gate_fix": "Native Still(JPG) STANDBY zero-count snapshots bracket full STAT_IDLE/active StillRecorder; active counts and transitions rejected",
-    "software_restart": {
-      "method": "non-forced BusyBox reboot, no manual uploader start after reboot",
-      "boot_id_before": "3f5e9f02-11bf-4aec-a110-0a0950a69c3a",
-      "boot_id_after": "1145edce-6896-4d60-9c4a-9f8deb29519a",
-      "worker": 716,
-      "dedup_total": 192,
-      "dedup_photos": 114,
-      "dedup_videos": 78,
-      "old_files_retransferred": 0,
-      "network_scope": "Camera initially not associated to AP; user restored native Wi-Fi. Same boot worker logged in, cleared FTP error and scanned without manual service restart."
-    },
-    "post_reboot_new_photo": {
-      "name": "DSC05456",
-      "ARW_bytes": 49026560,
-      "JPG_bytes": 9250617,
-      "sd_receipts": {
-        "ARW": "UAE30FAA.RCP",
-        "JPG": "UD409D4A.RCP"
-      },
-      "old_retransfers": 0,
-      "partial_files": 0,
-      "display_exit": 0,
-      "worker": 716
-    },
-    "sampling_scope": ".4 adds native Still type1 support to read-only sampler and retries transient layout95 while photos enabled. Host sampler14 and FTP140 tests passed; live ARM quiet wait4057ms/CPU7ms. Transfer binaries unchanged from accepted .2.",
-    "photo_osd_refresh": {
-      "tested_firmware": "ILCE-7C 2.00",
-      "observed_bug": "At 12% actual progress, photo standby retained idle icon; controller log alone did not prove screen refresh",
-      "verified": "Actual photo transfer at 68% showed progress; final screenshot restored 92-pixel idle mark; guard and consumer returned success; SD receipts and NAS length proof retained",
-      "native_dso_unchanged": true,
-      "native_probe_sha256": "fde2bd9fdd7862bc81eca7c93f5ad716fdbe209e90aac11d1e8bb18fd9c6f656",
-      "host_display_tests": 9,
-      "persistent_files_match": 22,
-      "deployment": "Wi-Fi persistent update without reboot or reinstalling uploader",
-      "sleep_or_cold_boot_tests": "Not repeated for this external-controller fix"
-    }
-  },
-  "camera_runtime_acceptance": {
     "candidate_payload": "0.4.2-photos.13-preview (same 22 files as release; maintainer camera also carries the debug Wi-Fi diagnostics add-on)",
     "status": "Installed on ILCE-7C 2.00 over USB. Progress bar shown and indicator restored on new RAW+JPEG uploads after the heartbeat fix (.10); idle quiet waits observed stepping 30 s -> 60 s (.6); SD-listing noise retry (.8) and display-failure service stop (.9) exercised; phase timings recorded (.11).",
     "idle_cpu": "Uploader worker incl. children 1.0 % of one core over 303 s idle in photo mode (camera main process 51 %, system 70 % of 4 cores)",
     "body_hash_or_readback": false
   },
-  "display_tests": 139
+  "display_tests": 139,
+  "diagnostic_tests": 12,
+  "camera_runtime_acceptance": {
+    "candidate_payload": "0.4.2-photos.15-preview+diag (release uses the identical 22 service files; four maintainer diagnostics files are excluded)",
+    "firmware": "ILCE-7C 2.00",
+    "stock_ftp_on": "Read on with the same discovery/selection implementation in .14; no photo FTP uploads by this service; C0269.MP4 uploaded, 12588673 bytes",
+    "stock_ftp_off": "Read off on .15; DSC05470.ARW/JPG automatically uploaded: 49001984 / 8828864 bytes, exact remote lengths and SD receipts",
+    "display": "Consumer exit 0, indicator_restored=1, display lock released; user confirmed the lower-left service indicator restored",
+    "retry_fix": "Real host integration reproduces rejected login before FIFO reader; fixed relay retires guardian, removes completed FIFOs and retries successfully",
+    "dedup": "No duplicate completion of the accepted photo pair in three follow-up samples; no residual .part files",
+    "usb_install_health": "File installation verified; USB health query timed out. Subsequent Wi-Fi runtime and actual uploads verified the service independently; no repeated installation",
+    "body_hash_or_readback": false,
+    "extra_restart_or_sleep_tests": false
+  }
 }

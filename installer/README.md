@@ -1,9 +1,9 @@
-# A7C Installer 0.1.0-preview.25
+# A7C Installer 0.1.0-preview.27
 
-相机载荷为 `0.4.2-photos.5-preview`，已验证第一代 **ILCE-7C / 固件 2.00**。
+相机载荷为 `0.4.2-photos.15-preview`，已验证第一代 **ILCE-7C / 固件 2.00**。
 桌面 App 和脚本共用安装核心，不升级固件，不安装 NAS 专用接收器，不处理 Photos 索引。
 
-当前版本已通过 macOS 与 Windows 的 CLI 卸载、全新安装和默认启动验证；Windows 全新安装后的新视频上传、SD 回执和进度显示收尾通过。Windows 打包 App 的连接、已安装识别、FTP 就地测试结果和断开也已验证。本批三个平台包版本统一为 preview.25，构建与实机验收范围见 `validation.json` 和发行目录的 `distributions.json`。
+既有 macOS 与 Windows 的 CLI 卸载、全新安装、默认启动及 Windows 驱动恢复验收记录保留。本批新增的原厂 FTP 照片暂停选项和重试修复已通过 macOS 连接的 2.00 实机验证；Windows 进行当前源码测试和成品离线自检。本批三个平台包版本统一为 preview.27，构建与实机验收范围见 `validation.json` 和发行目录的 `distributions.json`。
 
 本版新增 JPEG／ARW 图片上传开关、拍照待机支持和按时间排序的混合媒体队列。CLI 可用 `install --reuse --photos --yes` 开启，`--no-photos` 关闭；更新时默认沿用已有选择。
 
@@ -17,7 +17,7 @@
 - 检测已退出的显示模块及旧显示暂存版本，需要重启时明确提示，避免反复启动。
 
 本机GUI卸载、28项残留核对、干净会话首次安装、默认启动、真实FTP及SD回执验收通过。
-完整记录见[安装器设计](../docs/installer.md)。单个新片选中到复制6.47→6.27秒（各1样本），未宣称明显改善录制停止到进度条的等待。
+完整记录见[安装器设计](DESIGN.md)。单个新片选中到复制6.47→6.27秒（各1样本），未宣称明显改善录制停止到进度条的等待。
 分享与平台验收范围见[分享范围](SHARING.md)。
 
 先读[安装说明](START_HERE.md)；撤销见[恢复与卸载](RECOVERY.md)，异常用[反馈模板](FEEDBACK.md)。
@@ -133,7 +133,7 @@ Mac 构建不会产生 Windows exe，也不把 arm64 当作 Intel Mac 通用包�
 python3 packaging/prepare.py --pmca /path/to/Sony-PMCA-RE --camera-build /path/to/camera-build --native-display /path/to/native-service-build
 ```
 
-目录边界及实测见[安装器设计](../docs/installer.md)；第三方来源见
+目录边界及实测见[安装器设计](DESIGN.md)；第三方来源见
 [THIRD_PARTY.md](THIRD_PARTY.md) 及 `vendor/` 许可证。
 
 
