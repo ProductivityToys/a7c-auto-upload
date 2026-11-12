@@ -82,3 +82,7 @@ Do not report success from exit code 0 alone. Only ask me to act when cabling, a
 ```
 
 [CLI commands, return values and technical docs (Chinese) →](docs/README.md)
+
+## License
+
+Original code in this project is licensed under the [MIT License](LICENSE). Third-party components retain their respective licenses; see [Third-party components](installer/THIRD_PARTY.md).

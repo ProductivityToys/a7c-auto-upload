@@ -82,3 +82,7 @@ Windows 使用：powershell -NoProfile -ExecutionPolicy Bypass -File .\app\insta
 ```
 
 [CLI 命令、返回值与技术文档 →](docs/README.md)
+
+## 许可
+
+本项目原创代码采用 [MIT License](LICENSE)。第三方组件保留各自许可，见[第三方组件](installer/THIRD_PARTY.md)。
