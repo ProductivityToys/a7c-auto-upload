@@ -13,6 +13,7 @@ import zipfile
 HERE = Path(__file__).resolve().parents[1]
 PREFIX = "a7c-installer-" + json.loads((HERE / "validation.json").read_text())["installer_version"]
 GUIDES = ("START_HERE.md", "RECOVERY.md", "FEEDBACK.md", "SHARING.md")
+LICENSE = HERE.parent / "LICENSE"
 
 
 def verify_payloads(mac_app, windows_zip):
@@ -20,6 +21,7 @@ def verify_payloads(mac_app, windows_zip):
     with zipfile.ZipFile(HERE / "a7c_installer/resources/camera.zip") as archive:
         version = json.loads(archive.read("manifest.json"))["payload_version"]
     validation = json.loads((HERE / "validation.json").read_text())
+    license_bytes = LICENSE.read_bytes()
     if validation["payload_version"] != version:
         raise ValueError("Validation describes a different payload")
     for name in (*GUIDES, "THIRD_PARTY.md", "validation.json"):
@@ -29,6 +31,9 @@ def verify_payloads(mac_app, windows_zip):
     mac_payloads = list(mac_app.rglob("camera.zip"))
     if not mac_payloads or any(p.read_bytes() != expected for p in mac_payloads):
         raise ValueError("macOS App payload differs from source")
+    mac_licenses = list(mac_app.rglob("help/LICENSE"))
+    if not mac_licenses or any(p.read_bytes() != license_bytes for p in mac_licenses):
+        raise ValueError("macOS App project license differs from source")
     with zipfile.ZipFile(windows_zip) as archive:
         names = [n for n in archive.namelist() if n.replace("\\", "/").endswith("/a7c_installer/resources/camera.zip")]
         for guide in (*GUIDES, "THIRD_PARTY.md", "validation.json"):
@@ -37,6 +42,9 @@ def verify_payloads(mac_app, windows_zip):
                 raise ValueError("Windows bundled help differs from source: " + guide)
         if not names or any(archive.read(n) != expected for n in names):
             raise ValueError("Windows App payload differs from source")
+        licenses = [n for n in archive.namelist() if n.replace("\\", "/").endswith("/resources/help/LICENSE")]
+        if not licenses or any(archive.read(n) != license_bytes for n in licenses):
+            raise ValueError("Windows App project license differs from source")
 
 
 def document(destination):
@@ -48,6 +56,7 @@ def document(destination):
     (destination / "DESIGN.md").write_text(design.read_text().replace("../installer/README.md", "README.md"))
     shutil.copyfile(HERE / "THIRD_PARTY.md", destination / "THIRD_PARTY.md")
     shutil.copyfile(HERE / "validation.json", destination / "validation.json")
+    shutil.copyfile(LICENSE, destination / "LICENSE")
     for name in GUIDES:
         shutil.copyfile(HERE / name, destination / name)
 
@@ -69,6 +78,7 @@ def main():
         root = Path(temporary) / (prefix + "-scripts")
         shutil.copytree(HERE, root / "app", ignore=shutil.ignore_patterns("__pycache__", "*.pyc", ".venv", "dist", "build", "*.spec", "distributions*.json", "tests"))
         document(root / "app")
+        shutil.copyfile(LICENSE, root / "LICENSE")
         for launcher in (HERE / "packaging/launchers").iterdir():
             shutil.copy2(launcher, root / launcher.name)
         path = output / (root.name + ".zip")
@@ -107,6 +117,7 @@ def main():
             normalized = copy.copy(entry)
             normalized.filename = top + relative
             archive.writestr(normalized, original.read(entry.filename))
+        archive.writestr(top + "LICENSE", LICENSE.read_bytes())
     temporary.replace(target)
     files.append(target)
     manifest = {p.name: {"bytes": p.stat().st_size, "sha256": hashlib.sha256(p.read_bytes()).hexdigest()} for p in files}

@@ -1,9 +1,9 @@
-# A7C Installer 0.1.0-preview.27
+# A7C Installer 0.1.0-preview.28
 
 相机载荷为 `0.4.2-photos.15-preview`，已验证第一代 **ILCE-7C / 固件 2.00**。
 桌面 App 和脚本共用安装核心，不升级固件，不安装 NAS 专用接收器，不处理 Photos 索引。
 
-既有 macOS 与 Windows 的 CLI 卸载、全新安装、默认启动及 Windows 驱动恢复验收记录保留。本批新增的原厂 FTP 照片暂停选项和重试修复已通过 macOS 连接的 2.00 实机验证；Windows 进行当前源码测试和成品离线自检。本批三个平台包版本统一为 preview.27，构建与实机验收范围见 `validation.json` 和发行目录的 `distributions.json`。
+本批仅修复安装器健康查询的超时退出、补齐下载包的 MIT 许可和公开仓库的测试资料，并明确联网设置。相机载荷、显示模块与 Windows 驱动实现保持不变；本轮不操作相机，沿用已有 2.00 实机验收。三个平台包统一为 preview.28，测试与成品检查范围见 `validation.json` 和发行目录的 `distributions.json`。
 
 本版新增 JPEG／ARW 图片上传开关、拍照待机支持和按时间排序的混合媒体队列。CLI 可用 `install --reuse --photos --yes` 开启，`--no-photos` 关闭；更新时默认沿用已有选择。
 
@@ -122,6 +122,16 @@ python3 -m venv .venv
 .venv/bin/python app.py --demo
 .venv/bin/python packaging/build.py --output /path/to/output
 ```
+
+普通 FTP 组件测试可从仓库根目录运行（需要 C 编译器、POSIX shell 和测试 FTP 服务依赖）：
+
+```sh
+python3 -m pip install pyftpdlib==2.2.0
+python3 -m unittest discover -s camera/uploader/plainftp/tests -v
+python3 -m unittest discover -s camera/uploader/discovery/tests -v
+```
+
+测试资料已包含在 `camera/uploader/plainftp/tests/fixtures/`，不依赖历史 NAS 接收器或私人工作区。
 
 Windows 使用 `.venv\Scripts\python.exe`。PyInstaller 必须在目标系统构建；
 Mac 构建不会产生 Windows exe，也不把 arm64 当作 Intel Mac 通用包。

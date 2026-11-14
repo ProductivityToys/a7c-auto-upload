@@ -476,13 +476,17 @@ class SonyUsb:
             f'if [ "$($B cat "$N/owner" 2>/dev/null)" = {worker} ] && '
             '[ "$p" = "$($B pidof im.elf)" ] && [ -x "$N/probe" ] && '
             '$B grep -qx NATIVE_SERVICE_READY "$N/../native-start.log"; then '
-            # Reading im.elf maps can block briefly right after service start
-            # or USB mode changes. Bound it on the camera so this USB command
-            # never hangs; a slow read reports "starting" and the caller retries.
-            '"$N/probe" --inspect-service "$p" >/dev/null 2>&1 & c=$!; n=0; '
+            # Keep a slow, read-only probe from blocking the USB response. A
+            # killed probe may still be pending in the kernel: retain its PID
+            # and do not launch another one until that exact probe has exited.
+            'f="$D/display-health.pid"; c=$($B cat "$f" 2>/dev/null); pending=0; '
+            'case "$c" in ""|*[!0-9]*) ;; *) '
+            'if kill -0 "$c" 2>/dev/null && $B grep -qF "$N/probe" "/proc/$c/cmdline" 2>/dev/null; then pending=1; fi;; esac; '
+            'if [ "$pending" = 1 ]; then echo DISPLAY=starting; else '
+            '"$N/probe" --inspect-service "$p" >/dev/null 2>&1 & c=$!; echo "$c" > "$f"; n=0; '
             'while kill -0 "$c" 2>/dev/null && [ "$n" -lt 8 ]; do $B sleep 1; n=$((n+1)); done; '
-            'if kill -0 "$c" 2>/dev/null; then kill "$c" 2>/dev/null; wait "$c" 2>/dev/null; echo DISPLAY=starting; '
-            'elif wait "$c"; then echo DISPLAY=ready; else echo DISPLAY=error; fi; '
+            'if kill -0 "$c" 2>/dev/null; then kill -KILL "$c" 2>/dev/null; echo DISPLAY=starting; '
+            'else if wait "$c"; then echo DISPLAY=ready; else echo DISPLAY=error; fi; $B rm -f "$f"; fi; fi; '
             'else echo DISPLAY=error; fi; fi')
         fields = dict(line.split('=',1) for line in out.splitlines() if re.fullmatch(r'(UPLOAD|DISPLAY)=(ready|starting|disabled|error|restart)',line))
         if set(fields) != {'UPLOAD','DISPLAY'}:

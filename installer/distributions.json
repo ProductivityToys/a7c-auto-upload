@@ -1,34 +1,33 @@
 {
-  "package_revision": "preview.27",
-  "installer_version": "0.1.0-preview.27",
+  "package_revision": "preview.28",
+  "installer_version": "0.1.0-preview.28",
   "payload_version": "0.4.2-photos.15-preview",
   "payload_sha256": "55da88b9f568d0d498a9f6141d0241844b19f7b878624b0424e9fbc64a51f80c",
-  "artifact_directory": "/Volumes/ExtWorkspace/a7c-ftp-research/releases/installer-0.1.0-preview.27",
-  "release_url": "https://github.com/ProductivityToys/a7c-auto-upload/releases/tag/v0.1.0-preview.27",
+  "artifact_directory": "/Volumes/ExtWorkspace/a7c-ftp-research/releases/installer-0.1.0-preview.28",
+  "release_url": "https://github.com/ProductivityToys/a7c-auto-upload/releases/tag/v0.1.0-preview.28",
   "private": true,
   "prerelease": true,
   "assets": {
-    "a7c-installer-0.1.0-preview.27-scripts.zip": {
-      "bytes": 3958268,
-      "sha256": "1e8d7f7da71a55a5505d093472fd04da384d632ee8e503a3c5e7f4a50582c4b4"
+    "a7c-installer-0.1.0-preview.28-scripts.zip": {
+      "bytes": 3939222,
+      "sha256": "ecf4c60df62a530c50a6f75ffa29aa311c6152724ae354af517bcbc79a78d7f5"
     },
-    "a7c-installer-0.1.0-preview.27-macos-arm64.dmg": {
-      "bytes": 40452070,
-      "sha256": "03f097e18580972def87b25bb0cc001fee0b1df39bd9f1adf3e50680c167ab7f"
+    "a7c-installer-0.1.0-preview.28-macos-arm64.dmg": {
+      "bytes": 40456396,
+      "sha256": "102fe084dde0a5c5209e25ae56840551a685f6f32253ec32c543a0ff6a388794"
     },
-    "a7c-installer-0.1.0-preview.27-windows-x64.zip": {
-      "bytes": 46882706,
-      "sha256": "c346115442633ac6c1dc4e430d8c0e4f15441e007134f9d341038cb66444fb76"
+    "a7c-installer-0.1.0-preview.28-windows-x64.zip": {
+      "bytes": 46887519,
+      "sha256": "411af6c429b2e49b6caca400bf13c1e303a725f1297df27d862c0959a73610c8"
     }
   },
   "verification": {
     "macOS": {
-      "source_tests": "111 passed",
       "dmg_checksum": "VALID",
       "dmg_readonly_mount": true,
       "macos_signature": true,
-      "dmg_selfcheck": {
-        "installer_version": "0.1.0-preview.27",
+      "selfcheck": {
+        "installer_version": "0.1.0-preview.28",
         "platform": "macOS-27.0.1-arm64-arm-64bit-Mach-O",
         "payload_version": "0.4.2-photos.15-preview",
         "payload_files": 22,
@@ -36,18 +35,19 @@
         "firmware": "2.00",
         "usb": "skipped: offline self-check",
         "bundled_help": {
-          "guides": 6,
+          "guides": 7,
           "status": "passed; readable inside App"
         }
       },
+      "all_app_files_and_links_match": 430,
+      "project_mit_in_app": true,
+      "scope": "Read-only mount using existing noninteractive sudo authorization; no camera action",
+      "source_tests": "117 passed",
       "all_payloads_match": true
     },
     "Windows": {
-      "build_archive_sha256": "36e8d017a2b7272e9de7fe1900e912b341f2d00395c635111ac37f04fbf95896",
-      "download_sha256_match": true,
-      "source_tests": "111 run, 110 passed, 1 POSIX launcher skipped",
       "frozen_exe": {
-        "installer_version": "0.1.0-preview.27",
+        "installer_version": "0.1.0-preview.28",
         "platform": "Windows-11-10.0.26200-SP0",
         "payload_version": "0.4.2-photos.15-preview",
         "payload_files": 22,
@@ -55,7 +55,7 @@
         "firmware": "2.00",
         "usb": "skipped: offline self-check",
         "bundled_help": {
-          "guides": 6,
+          "guides": 7,
           "status": "passed; readable inside App"
         },
         "windows_driver": {
@@ -72,20 +72,37 @@
       "final_archive_crc": true,
       "cmd_help": true,
       "cmd_menu_start_exit": true,
-      "scope": "Final Chinese EXE and CMD paths; shared prepared runtime and existing elevated SSH session. No camera, driver changes or new UAC flow."
+      "scope": "Final Chinese EXE and CMD paths; shared prepared runtime and existing elevated SSH session. No camera, driver changes or new UAC flow.",
+      "source_tests": "117 run, 113 passed, 4 POSIX skipped",
+      "build_archive_sha256": "159ab7dc31e3888b5e176bf2a50ddeed6a68f089e612c5a5a8922a3b529c2cb5",
+      "download_sha256_match": true
     },
     "scripts": {
       "zip_crc": true,
-      "payload_matches_source": true,
+      "payloads_match": true,
+      "project_license_in_both_zips": true,
       "command_help": true,
       "menu_start_exit": true,
-      "environment": "prepared shared runtime, existing sudo authorization; no device action"
+      "menu_scope": "nonprivileged menu with prepared runtime; no camera action or sudo prompt"
+    },
+    "ftp_tests": {
+      "run": 162,
+      "status": "passed in self-contained distribution checkout"
+    },
+    "discovery_tests": {
+      "run": 15,
+      "status": "passed"
     },
     "release_payload": {
       "service_files": 22,
       "wifi_diag_present": false,
-      "shared_bytes_across_three_packages": true
+      "shared_bytes_across_three_packages": true,
+      "unchanged_from_preview27": true
     },
-    "camera_scope": "Existing .15 runtime acceptance recorded in validation.json; no camera/driver actions during packaging."
+    "project_license": {
+      "status": "MIT included and compared to root LICENSE in all three packages",
+      "desktop_help": "Project license readable in both frozen Apps"
+    },
+    "camera_scope": "No camera or driver actions during preview.28; existing .15 runtime acceptance retained."
   }
 }

@@ -4,9 +4,8 @@ Camera recording gates are independently exercised by test_media and baseline.
 import os,pathlib,re,subprocess,sys,unittest,hashlib
 import test_ftp
 SRC=test_ftp.SRC
-RECEIVER=SRC.parents[2]/'nas/receiver'
-sys.path.insert(0,str(RECEIVER))
-from media import metadata
+FIXTURES=pathlib.Path(__file__).resolve().parent/'fixtures'
+from fixture_metadata import metadata
 class WorkerIntegration(test_ftp.FTPTests):
  # Use the fixture only; inherited transport tests run in test_ftp.py.
  def setUp(self):
@@ -14,7 +13,7 @@ class WorkerIntegration(test_ftp.FTPTests):
   for name,files in [('plainftp',[SRC/'ftp.c',SRC.parent/'receipt/receipt.c']),('local-media',[SRC/'media.c']),('relay',[SRC.parent/'relay.c'])]:
    subprocess.run(['cc','-O2',*(['-DRELAY_SIZE_ONLY'] if name=='relay' else []),*map(str,files),'-o',str(self.d/name)],check=True)
   (self.root/'uptime').write_text('100.0 200.0\n')
-  self.xml=(RECEIVER/'tests/metadata.xml').read_bytes();(self.root/'metadata').write_bytes(self.xml)
+  self.xml=(FIXTURES/'metadata.xml').read_bytes();(self.root/'metadata').write_bytes(self.xml)
   (self.root/'owner-stat').write_text('123 (uploader) '+' '.join(['0']*19+['98765'])+'\n')
   self.identity=hashlib.sha256(f"a7c-file-v1:C0001.MP4:{len(self.content)}:2026-10-22T17:00:00".encode()).hexdigest()
   self.exe('bb','''#!/bin/sh

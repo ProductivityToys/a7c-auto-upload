@@ -36,7 +36,12 @@ Installer main window (demo data).
 ### Getting started
 
 First set up your home Wi-Fi on the camera, and prepare a working regular FTP account and upload directory.
-The stock FTP Function does not need to be on. To remote-control from a computer or phone, turn on the stock PC Remote and choose a "Wi-Fi Access Point" connection (camera and computer/phone on the same home router).
+Keep the camera connected using either of these tested setups:
+
+- Leave the stock "FTP Function = On".
+- If stock FTP is off, turn "PC Remote = On" and select "Wi-Fi Access Point" (camera and computer/phone on the same home router). Disconnect the remote software's live-view session when uploading.
+
+This uploader uses the camera's existing network connection; it does not turn Wi-Fi on itself. Saving an access-point configuration alone does not mean the camera is connected.
 
 1. **Connect the camera**: set USB Connection to "Mass Storage", connect it to the computer, and click 「连接相机」 (Connect camera) in the app.
 2. **Enter FTP details**: server, account, password and directory, then click 「测试连接」 (Test connection).
@@ -65,7 +70,8 @@ Please install and configure A7C Auto Upload for me.
 Project: https://github.com/ProductivityToys/a7c-auto-upload
 
 It lets a first-generation Sony A7C / ILCE-7C upload videos automatically over home Wi-Fi to a regular FTP server, with optional JPEG / ARW upload.
-The camera's stock FTP Function does not need to be on; it works alongside the stock PC Remote (Wi-Fi Access Point mode, from a computer or phone).
+Keep the camera connected: leave the stock FTP Function on, or turn stock FTP off and PC Remote on with Wi-Fi Access Point mode connected to the home router.
+The uploader does not turn Wi-Fi on itself. Uploads pause during a remote live-view session and resume when it disconnects; no computer or phone needs to stay running.
 Read docs/README.md and docs/cli-guide.md in the repository first (they are in Chinese), and prefer the CLI from the latest scripts package.
 Read the camera model, firmware and existing installation state first, then install or update as needed.
 Ask me for any missing FTP details; passwords must go through hidden input, never ask me to send one in chat.

@@ -1,0 +1,209 @@
+A7C_RESIDENT_V1
+BOOT=11111111-1111-1111-1111-111111111111
+IFSYS getdriveletter /dev/mmca
+driveLetter = 'B'
+MWF>
+121.99 174.96
+### monio start ###
+ Physical Addr : 20098000
+ Logical  Addr : 04485000
+ Mon Buf Size  : 00008000
+
+[AVIMMGR][MS1]AviMMgr::GetWithProxyClipCount contentType=0x00000100
+[MSV][MS1]dir non existance
+[COMMONDCFMSV] ChangeRecDir error
+[MSV][MS1]dir non existance
+[COMMONDCFMSV] ChangeRecDir error
+  codecType = XAVC
+  codecType = XAVC2(PROXY)
+[AVIMMGR][MS1]AviMMgr::GetWithProxyClipCount contentType=0x00000100
+[MSV][MS1]dir non existance
+[COMMONDCFMSV] ChangeRecDir error
+[MSV][MS1]dir non existance
+[COMMONDCFMSV] ChangeRecDir error
+[AVIMMGR][MS1]AviMMgr::GetWithProxyClipCount contentType=0x00000100
+[MSV][MS1]dir non existance
+[COMMONDCFMSV] ChangeRecDir error
+[MSV][MS1]dir non existance
+[COMMONDCFMSV] ChangeRecDir error
+[MprIf] Callback RecStop
+2026-10-14T10:32:30+09:00
+2026-10-14T10:32:30+09:00
+[MP4FILELIB][SPEC0]: [mp4FileLib_LocalCache.cpp, 1271]: write_size(Write in Seek) = 0x00007994(31124)
+[MP4FILELIB][SPEC0]: [mp4FileLib_LocalCache.cpp, 537]: write_size(WriteAndFlush in Close) = 0x000000C0(192)
+m_curRecFileName data size:128
+m_curRecFileName:C0192.MP4
+mainStremFileName data size:128
+mainStremFileName:C0192.MP4
+mainStremFilePath:\C0192.MP4
+[XAVCIFO] ### xavcIfo faild at IF/xavcIfo_M4SubGeneral.cpp(0595) ErrCd: 0x01500006
+[XAVCIFO] ### xavcIfo faild at xavcIfo_Sequence.cpp(1181) ErrCd: 0x01500006
+[XAVCIFO] ### xavcIfo faild at xavcIfo_CommonSequence.cpp(4181) ErrCd: 0x01500006
+2026-10-14T10:32:30+09:00
+2026-10-14T10:32:30+09:00
+[MprIf] Callback EvtStreamWriteComplete
+[MP4FILELIB][SPEC0]: [mp4FileLib_LocalCache.cpp, 1271]: write_size(Write in Seek) = 0x00008703(34563)
+[MP4FILELIB][SPEC0]: [mp4FileLib_LocalCache.cpp, 537]: write_size(WriteAndFlush in Close) = 0x000000C0(192)
+m_curRecFileName data size:128
+m_curRecFileName:C0192.MP4
+mainStremFileName data size:128
+mainStremFileName:C0192.MP4
+mainStremFilePath:\PRIVATE\M4ROOT\CLIP\C0192.MP4
+nrtMetadataFilePath data size:154
+nrtMetadataFilePath:\PRIVATE\M4ROOT\CLIP\C0192M01.XML
+thumbnailFilePath:\PRIVATE\M4ROOT\THMBNL\C0192T01.JPG
+subStreamFilePath:\PRIVATE\M4ROOT\SUB\C0192S03.MP4
+[MprIf] Callback EvtRecStreamBufferComplete
+[AVI][REC]      sources/avi_if/AviSeqRec.cpp Error=[ER_OK] Line:28764
+ CS_FlashAcsr::MarkXavcContentRecBackupStart([I] Line = 40255) IN
+in MarkXavcContentRecBackupEnd(Line : 40436)
+in MarkXavcContentRecBackupEnd(Line : 40442)
+in MarkXavcContentRecBackupEnd(Line : 40448)
+in MarkXavcContentRecBackupEnd(Line : 40463)
+in MarkXavcContentRecBackupEnd(Line : 40466)
+[MprIf] Callback EvtStreamWriteComplete
+[MprIf] Callback EvtRecComplete
+[MprIf] Callback
+[MSV][MS1]dir non existance
+[COMMONDCFMSV] ChangeRecDir error
+[AVIMMGR][MS1] AVI[1], AVCHD[0], M2PS[0], DCF[1], XAVC[1], MXF[0], DVAVI[0], PXSTYLE[0], MPEG2-MP4[0]
+[AVIMMGR][MS1] AVI[1], AVCHD[0], M2PS[0], DCF[1], XAVC[1], MXF[0], DVAVI[0], PXSTYLE[0] MPEG2-MP4[0] ==bExist:[1]==
+[AVIMMGR][MS1]CheckAppStructureExistCmd : res->isAppStructureExist = [00000001]
+[MSV][MS1]dir non existance
+[COMMONDCFMSV] ChangeRecDir error
+[MprMcmd][RecInfo] =====
+ + line[0], contentType:Movie(XAVC), RecCnt1:0, RecCnt2:0, RecStatus:REC_STATE_STANDBY
+ + line[1], contentType:Movie(XAVC), RecCnt1:0, RecCnt2:0, RecStatus:REC_STATE_STANDBY
+MON>MPR_SAMPLE_END=7
+### monio start ###
+ mwf_monio     : 0.01
+ Physical Addr : 200eb400
+ Logical  Addr : 0x4604400
+ Mon Buf Size  : 00008000
+
+IFSYS dir B:/PRIVATE/M4ROOT/CLIP
+IFSYS dir B:/PRIVATE/M4ROOT/CLIP
+[IFSYS]a----- 24 2026-10-14 10:00:00 C0193.MP4
+[IFSYS]a----- 2174 2026-10-14 10:00:00 C0193M01.XML
+MWF>IFSYS info
+IFSYS info
+
+******** Fsys - IFSYS   VER:109 CATEGORY:MAIN TYPE:COM CXD:COM ********
+
+
+drive info : A(B)
+  device status     =
+  device type       = One Nand PMB
+  mount device name = "/dev/nflasha23"
+  open  device name = "/dev/nflasha23"
+  p_handle          = 0x1ca30
+  reference count   = 1
+  transfer rate     = 16
+  page size         = 512
+  total sector      = 4096
+  block size (org)  = 00020000
+  block size (adj)  = 00020000
+  block start(org)  = 00000000
+  block start(adj)  = 00000000
+  ID                = 00 00 00 00 00 00 00 00
+                      00 00 00 00 00 00 00 00
+                      00 00 00 00 00 00 00 00
+  drive status      = mount
+  current dir       = ""
+  partition         = 0
+  BPB_SecPerClus    = 4
+  BPB_RsvdSecCnt    = 1
+  BPB_RootEntCnt    = 512
+  BPB_NumFATs       = 2
+  BPB_Media         = 0xf8
+  BPB_TotSec16/32   = 0x00000fff
+  BPB_FATSz16/32    = 3
+  BPB_RootClus      = 0
+  BPB_FSInfo        = 0
+  BPB_BkBootSec     = 0
+
+drive info : B(D)
+  device status     =
+  device type       = Unknown(8402)
+  mount device name = "/dev/mmca"
+  open  device name = "/dev/mmca"
+  p_handle          = 0x1e710
+  reference count   = 1
+  transfer rate     = 240
+  page size         = 512
+  total sector      = 249737216
+  block size (org)  = 00400000
+  block size (adj)  = 00400000
+  block start(org)  = 00000000
+  block start(adj)  = 00000000
+  ID                = 39 01 C3 00 F5 4D 80 38
+                      32 31 52 53 44 53 03 00
+                      00 00 00 00 00 00 00 00
+  drive status      = mount, backup
+  current dir       = ""
+  partition         = 0
+  BPB_SecPerClus    = 256
+  BPB_RsvdSecCnt    = 16384
+  BPB_RootEntCnt    = 0
+  BPB_NumFATs       = 1
+  BPB_Media         = 0xf8
+  BPB_TotSec16/32   = 0x0ee23000
+  BPB_FATSz16/32    = 16384
+  BPB_RootClus      = 4
+  BPB_FSInfo        = 0
+  BPB_BkBootSec     = 12
+open file info :
+  status            = open, read/write
+  file & ext name   = "D:\PRIVATE\M4ROOT\MEDIAPRO.XML"
+  file info address = 0x7567498
+  file handle       = 0x7542e60
+  file attribute    = 0x20
+  start cluster     = 0x0000000c
+open file info :
+  status            = open, read/write
+  file & ext name   = "D:\AVF_INFO\AVIN0001.INP"
+  file info address = 0x7567d48
+  file handle       = 0x7542e20
+  file attribute    = 0x22
+  start cluster     = 0x00000122
+
+MediaAccessLog  : max 0 records
+
+$ MUTEXLOG {
+DeviceMutex(0) unlocked
+00000000: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00   ................
+00000010: 00 00 00 00 00 00 00 00                           ........
+
+DeviceMutex(1) unlocked
+00000000: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00   ................
+00000010: 00 00 00 00 00 00 00 00                           ........
+
+DeviceMutex(2) unlocked
+00000000: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00   ................
+00000010: 00 00 00 00 00 00 00 00                           ........
+
+DeviceMutex(3) unlocked
+00000000: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00   ................
+00000010: 00 00 00 00 00 00 00 00                           ........
+
+DeviceMutex(4) unlocked
+00000000: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00   ................
+00000010: 00 00 00 00 00 00 00 00                           ........
+
+DeviceMutex(5) unlocked
+00000000: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00   ................
+00000010: 00 00 00 00 00 00 00 00                           ........
+
+flashif mutex unlocked
+00000000: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00   ................
+00000010: 00 00 00 00 00 00 00 00                           ........
+
+$ MUTEXLOG }
+
+******** Fsys - IFSYS   VER:109 CATEGORY:MAIN TYPE:COM CXD:COM ********
+
+MWF>[MONIO][LOGGING]: catch SIGINT
+IFSYS_SAMPLE_END=7
+135.17 199.98
+
+A7C_STATUS_END

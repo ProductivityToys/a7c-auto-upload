@@ -1,0 +1,55 @@
+MPR Debug Info
+
+ = = = = = MprIf Debug Information = = = = =
+  + Initialize Parameter
+  l  TV SYSTEM               : PAL
+  l  ProductName             : ILCE-7C
+  l  VendorID                : SONY
+  l  Separator               : /
+  l  Definition              : SD
+  l  SupportMedia            : MS
+  l  SupportContents         : 0x00000105
+      + MP4 AVC
+      + DCF
+  l  GpsModule Exist         : true
+  l  MultiMovie Rec          : false
+  l  TC/UB Rec               : true
+  l  CamInfo Rec             : true
+  l  SerialNumber            : 0xFFFFFFFF
+  +- Self Check Code
+      + MS_ILLEGAL           : false
+      + SSD_ILLEGAL          : false
+      + DVD_ACCESS_ERROR     : false
+      + DVD_DRIVE_FAILURE    : false
+      + HDD_DRIVE_FAILURE    : false
+      + FLASH_BACKUP_FAILURE : false
+      + FLASH_MEDIA_FAILURE  : false
+  MprIf Instance             : active (at 0x057286F8)
+  +- Callback()              : active (at 0x044E0587)
+  l   + owner                : active (at 0x0571C468)
+  +- RecParameter
+  l
+  +- Status                  : STAT_IDLE
+      +-StillPlayer          : none
+      +-MoviePlayer          : none
+      +-IndexPlayer          : none
+      +-AudioPlayer          : none
+      +-StillRecorder        : none
+      +-MovieRecorder        : none
+      +-Finalizer            : none
+      +-DubMgr               : none
+  Command Status             : Ready
+  +- Preload Param
+      + m_preloadState                 : 0
+      + mp_reservedCmdQueForPreload
+        + Count                        : 0
+      + m_execReservedCmdForPreload    : 0x40000000
+      + mb_existMMgrPreloadSuspendReq  : 0
+      + mb_prohibitPreload             : 0
+      + mb_existNewRequestOfPreload    : 0
+      + m_latestPreloadResult          : 0x00000000
+      + mb_needWaitAlmForPreloadRestart: 0
+      + mb_waitingForAlarm             : 0
+      + mb_alarmAvailable              : 1
+      + m_waitTime                     : 500[ms]
+MON>

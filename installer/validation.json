@@ -1,30 +1,30 @@
 {
-  "installer_version": "0.1.0-preview.27",
-  "package_revision": "preview.27",
+  "installer_version": "0.1.0-preview.28",
+  "package_revision": "preview.28",
   "payload_version": "0.4.2-photos.15-preview",
   "payload_sha256": "55da88b9f568d0d498a9f6141d0241844b19f7b878624b0424e9fbc64a51f80c",
   "payload_files": 22,
   "channel": "preview",
   "supported_model": "ILCE-7C",
   "supported_firmware": "2.00",
-  "build_date": "2026-11-11",
+  "build_date": "2026-11-14",
   "unit_tests": {
-    "macOS": 111,
-    "Windows": 110
+    "macOS": 117,
+    "Windows": 113
   },
   "macOS": {
     "arch": "arm64",
     "frozen_app_selfcheck": "Final frozen App, signature and embedded-file checks recorded in distributions.json",
     "signature": "ad-hoc; not notarized",
     "release_artifacts": "See distributions.json for final archive/entry checks; validation embedded before packaging.",
-    "source_tests": "111 passed; current source tests and frozen checks recorded in distributions.json"
+    "source_tests": "117 passed, including real isolated health-shell deadline and release-license checks; no camera I/O"
   },
   "Windows": {
     "arch": "x64",
-    "status": "110 source tests passed and one POSIX skip; existing Windows camera install/uninstall and driver acceptance retained; .15 camera runtime verified via macOS",
+    "status": "Installer-only update; existing camera and driver lifecycle acceptance retained. Current source tests and frozen checks are recorded in distributions.json.",
     "os": "11 build 26200",
     "signature": "unsigned preview",
-    "source_tests": "111 run, 110 passed, 1 POSIX launcher skipped; Windows 11 source test run on 2026-11-11",
+    "source_tests": "117 run, 113 passed, 4 POSIX cases skipped; source tests and frozen checks on Windows 11",
     "frozen_app_selfcheck": "Final frozen EXE and embedded-file checks recorded in distributions.json"
   },
   "native_display": "ABI21 module and the display package are unchanged from the accepted .13 release; native progress bar and idle indicator restored after the tested RAW+JPEG uploads.",
@@ -34,20 +34,20 @@
     "debug_listener_in_payload": false
   },
   "changes": [
-    "Add a default-enabled option to pause this service photo uploads while the stock FTP Function is on; video uploads continue",
-    "Resume pending photo uploads when stock FTP is off; queued photos receive no success receipt while paused",
-    "Preserve an explicitly disabled pause option during configuration updates; photo upload itself stays off by default",
-    "Fix a pre-copy FTP connection failure leaving the relay guardian cleanup unfinished and stopping the service; failed connections remain retryable",
-    "No change to the native display module, Windows driver implementation or firmware compatibility checks; no Wi-Fi diagnostic listener in release payloads"
+    "Bound the read-only USB display health probe: kill on deadline without an unbounded wait, and avoid launching another probe while the prior one is pending",
+    "Include the project MIT license in macOS, Windows and scripts packages, expose it in App help, and reject packaging if a desktop build omits it",
+    "Make FTP tests self-contained with local fixtures and a test-only legacy XML reference; remove dependence on the absent historical NAS receiver",
+    "Clarify tested camera networking choices in Chinese and English quick starts and the AI copy block: stock FTP on, or stock FTP off with PC Remote Wi-Fi Access Point on",
+    "The 22 camera service files, native display and Windows drivers are byte-for-byte unchanged from preview.27; no camera or driver actions in this release"
   ],
   "sharing_status": "Private GitHub prerelease; macOS arm64, Windows x64 and CLI scripts. Tested ILCE-7C2.00; other firmware untested.",
   "worker_tests": {
     "macOS": 162,
-    "result": "passed; real host C/shell/FTP integration, including rejected pre-copy login, ARW retry and dedup; no camera I/O"
+    "result": "Self-contained public checkout: host C/shell/FTP integration; no historical NAS directory or camera I/O"
   },
   "native_start_tests": 1,
   "unit_test_skips": {
-    "Windows": "1 POSIX launcher test; 111 run, 110 passed; skipped case executed on macOS"
+    "Windows": "4 POSIX cases executed on macOS: three health-shell integration cases and one launcher case; 117 run, 113 passed, 4 skipped"
   },
   "script_acceptance": {
     "entrypoints": "macOS .command --help / menu start-exit and Windows CMD menu start-exit passed using prepared runtime and existing administrator session",
@@ -55,7 +55,7 @@
     "camera_uninstall_via_cli": "macOS prior uninstall passed; Windows .21:27 managed paths absent, owned preload absent, private backup retained; all3 own OEM driver packages removed and original driver restored",
     "shared_core_tests": "host unit/integration tests only; not equivalent to CLI-on-camera end-to-end acceptance",
     "camera_acceptance_path": "Actual macOS and Windows CLI lifecycle tested; Windows C0258 new video20978709 bytes, SD UF786A6A.RCP and display cleanup0 accepted. Final frozen Windows .22 GUI connect, installed recognition, inline FTP result and disconnect passed; GUI install/uninstall buttons not separately claimed.",
-    "next_device_acceptance": "No additional camera tests required for this packaging release; completed acceptance is recorded above."
+    "next_device_acceptance": "No camera actions in preview.28; host-side health deadline tested with real isolated stand-ins. Existing device acceptance retained."
   },
   "discovery_tests": 15,
   "previous_camera_runtime_acceptance": {
@@ -76,6 +76,7 @@
     "dedup": "No duplicate completion of the accepted photo pair in three follow-up samples; no residual .part files",
     "usb_install_health": "File installation verified; USB health query timed out. Subsequent Wi-Fi runtime and actual uploads verified the service independently; no repeated installation",
     "body_hash_or_readback": false,
-    "extra_restart_or_sleep_tests": false
+    "extra_restart_or_sleep_tests": false,
+    "scope": "Carried forward from preview.27 (.15 payload is unchanged); no new device acceptance claimed for preview.28"
   }
 }

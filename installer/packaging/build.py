@@ -44,6 +44,7 @@ def main():
               "--add-data", str(HERE / "vendor") + separator + "vendor",
               "--add-data", str(HERE / "licenses") + separator + "licenses",
               "--add-data", str(HERE / "THIRD_PARTY.md") + separator + ".",
+              "--add-data", str(HERE.parent / "LICENSE") + separator + ".",
               "--copy-metadata", "PySide6-Essentials", "--copy-metadata", "shiboken6",
               "--copy-metadata", "pyusb", "--copy-metadata", "pycryptodomex",
               "--collect-all", "libusb_package", "--hidden-import", "pmca.usb.sony",
@@ -52,6 +53,7 @@ def main():
               "--hidden-import", "Cryptodome.Hash.SHA1"]
     for name in ('START_HERE.md', 'RECOVERY.md', 'SHARING.md', 'FEEDBACK.md', 'THIRD_PARTY.md', 'validation.json'):
         common += ['--add-data', str(HERE / name) + separator + 'a7c_installer/resources/help']
+    common += ['--add-data', str(HERE.parent / 'LICENSE') + separator + 'a7c_installer/resources/help']
     environment = os.environ.copy()
     # A venv created from Conda does not expose Library/bin to PyInstaller's
     # dependency analysis, although source Python can import ctypes normally.

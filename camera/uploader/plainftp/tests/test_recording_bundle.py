@@ -7,7 +7,7 @@ import unittest
 
 SRC=Path(__file__).resolve().parents[1]
 BASE=SRC.parent/'worker.sh'
-FIXTURES=SRC.parents[2]/'nas/receiver/tests'
+FIXTURES=Path(__file__).resolve().parent/'fixtures'
 EMPTY='MPR Debug RecInfo\n[MprMcmd][RecInfo] =====\nMON>\n'
 STANDBY='MPR Debug RecInfo\n[MprMcmd][RecInfo] =====\n'+(' + line, contentType:Movie(XAVC), RecCnt1:0, RecCnt2:0, RecStatus:REC_STATE_STANDBY\n'*2)+'MON>\n'
 STILL='MPR Debug RecInfo\n[MprMcmd][RecInfo] =====\n + line[0], contentType:Still(JPG), RecCnt1:0, RecCnt2:0, RecStatus:REC_STATE_STANDBY\nMON>\n'

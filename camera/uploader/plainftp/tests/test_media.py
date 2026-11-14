@@ -1,15 +1,14 @@
 """Real C local gates compared to existing Python parsers and damaged inputs."""
 import hashlib,pathlib,subprocess,tempfile,unittest,sys
 SRC=pathlib.Path(__file__).resolve().parents[1]
-RECEIVER=SRC.parents[2]/'nas/receiver'
-sys.path.insert(0,str(RECEIVER))
-from media import metadata
+FIXTURES=pathlib.Path(__file__).resolve().parent/'fixtures'
+from fixture_metadata import metadata
 class MediaTests(unittest.TestCase):
  @classmethod
  def setUpClass(cls):
   cls.build=tempfile.TemporaryDirectory();cls.bin=pathlib.Path(cls.build.name)/'media'
   subprocess.run(['cc','-O2','-Wall','-Wextra','-Werror',str(SRC/'media.c'),'-o',str(cls.bin)],check=True)
-  cls.xml=(RECEIVER/'tests/metadata.xml').read_bytes();cls.status=(RECEIVER/'tests/status.txt').read_bytes()
+  cls.xml=(FIXTURES/'metadata.xml').read_bytes();cls.status=(FIXTURES/'status.txt').read_bytes()
  @classmethod
  def tearDownClass(cls):cls.build.cleanup()
  def call(self,action,data,last='24'):
