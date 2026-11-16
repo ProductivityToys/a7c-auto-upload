@@ -9,6 +9,10 @@ Only videos are uploaded by default; **JPEG / RAW (ARW) photo upload** can be tu
 
 **Tested: Sony A7C / ILCE-7C, firmware 2.00. Other firmware versions are untested.**
 
+> **Disclaimer:** This is an independent, unofficial open-source tool. It is not affiliated with, endorsed by, or supported by Sony. The software is provided "as is"; see the [MIT License](LICENSE) for warranty and liability terms.
+>
+> Installation modifies the camera's startup and runtime environment and may cause device malfunction, data loss, or compatibility issues. Assess these risks before use, back up important media, and test in a non-critical shooting setup first.
+
 ## What it solves
 
 | Stock limitation | This project |
