@@ -63,6 +63,11 @@ class MemoryCamera:
         self.stopped = True
         self.events.append(("quiesce", retire_display))
 
+    def cleanup_staging(self, paths):
+        self.events.append(('cleanup-staging', tuple(paths)))
+        for path in paths:
+            self.files.pop(path + '.installer-next', None)
+
     def start_service(self):
         assert ENABLE in self.files and PENDING not in self.files
         self.events.append(('start-service',))
@@ -604,6 +609,66 @@ class TerminalTests(unittest.TestCase):
         transport.terminal = True
         transport.dev = Terminal()
         self.assertEqual(transport.command("echo ACTUAL"), "ACTUAL")
+
+    def test_partial_kernel_timestamp_does_not_break_file_existence_reply(self):
+        from a7c_installer.transport.sony_usb import SonyUsb
+        class Terminal:
+            def writeTerminal(self, wire):
+                nonce = re.search(rb"'__A7C_BEGIN_' '([0-9a-f]+)'", wire)[1]
+                self.parts = [b'\n__A7C_BEGIN_' + nonce + b'\r\nEXISTS\r\n'
+                              b'[ 629.966942] Register interface\n'
+                              b'[ 629.966958] \n[ 629\r\n'
+                              b'__A7C_END_' + nonce + b':0\r\n# ']
+            def readTerminal(self):
+                return self.parts.pop(0)
+        transport = SonyUsb()
+        transport.terminal = True
+        transport.dev = Terminal()
+        self.assertTrue(transport.exists('/setting/a7c-uploader/plainftp/config'))
+
+    def test_console_fragment_before_completion_marker_does_not_cause_timeout(self):
+        from a7c_installer.transport.sony_usb import SonyUsb
+        class Terminal:
+            def writeTerminal(self, wire):
+                nonce = re.search(rb"'__A7C_BEGIN_' '([0-9a-f]+)'", wire)[1]
+                self.parts = [wire + b'\n__A7C_BEGIN_' + nonce + b'\r\nEXISTS\r\n'
+                              b'[ 779.885150] Regi\r\ns__A7C_END_' + nonce + b':0\r\n'
+                              b'ter interface\r\n# ']
+            def readTerminal(self):
+                return self.parts.pop(0)
+        transport = SonyUsb()
+        transport.terminal = True
+        transport.dev = Terminal()
+        self.assertTrue(transport.exists('/setting/a7c-uploader/plainftp/config'))
+
+    def test_conflicting_existence_results_are_never_accepted(self):
+        from unittest.mock import patch
+        from a7c_installer.transport.sony_usb import SonyUsb
+        transport = SonyUsb()
+        for value in ('kernel noise only', 'EXISTS\nABSENT', 'EXISTS\nEXISTS'):
+            with self.subTest(value=value), patch.object(transport, 'command', return_value=value):
+                with self.assertRaises(InstallerError):
+                    transport.exists('/setting/a7c-uploader/installed.json')
+
+    def test_long_command_never_overflows_the_interactive_shell_line(self):
+        from a7c_installer.transport.sony_usb import SonyUsb
+        case = self
+        class Terminal:
+            needs_drain = False
+            def writeTerminal(self, wire):
+                case.assertFalse(self.needs_drain, 'input must be drained between short lines')
+                self.needs_drain = True
+                case.assertTrue(all(len(line) <= 800 for line in wire.splitlines()))
+                match = re.search(rb"'__A7C_BEGIN_' '([0-9a-f]+)'", wire)
+                self.parts = ([b'\n__A7C_BEGIN_' + match[1] + b'\nACTUAL\n'
+                               b'__A7C_END_' + match[1] + b':0\n'] if match else [])
+            def readTerminal(self):
+                self.needs_drain = False
+                return self.parts.pop(0) if self.parts else b''
+        transport = SonyUsb()
+        transport.terminal = True
+        transport.dev = Terminal()
+        self.assertEqual(transport.command('echo ACTUAL' + ' ' * 3500), 'ACTUAL')
 
 
 if __name__ == "__main__":

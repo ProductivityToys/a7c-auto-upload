@@ -17,4 +17,5 @@
 | --- | --- |
 | [CLI 操作指南](cli-guide.md) | 脚本入口、命令、凭据输入、JSON 结果与固件检测逻辑 |
 | [安装器开发说明](../installer/README.md) | 安装核心、USB、构建与发包 |
+| [安装与移除测试](installer-testing.md) | 失联恢复、暂存清理与发布后实机补测 |
 | [第三方组件](../installer/THIRD_PARTY.md) | 依赖来源与许可证 |

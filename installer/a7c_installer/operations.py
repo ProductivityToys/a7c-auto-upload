@@ -195,6 +195,14 @@ class Installer:
         self.log("已暂停自启，等待现有上传与显示合作退出")
         self.camera.quiesce(retire_display=retire_display)
 
+    def cleanup_staging(self):
+        # A lost USB response can leave an incomplete atomic-write temporary.
+        # Only explicit installer destinations are eligible; never recurse into
+        # application directories, RAM mounts, media, or the rollback contents.
+        paths = self.paths()
+        self.camera.cleanup_staging(paths + [PENDING, BACKUP + "/manifest.json"] +
+                                    [BACKUP + "/" + str(i) for i in range(len(paths))])
+
     def install(self, settings=None, reuse=False, display=True, preserve_password=False, expected_config=None,
                 photos=None, pause_photos_for_native_ftp=None):
         self.verify_firmware()
@@ -228,6 +236,7 @@ class Installer:
             changed_stage = previous_stage is not None and previous_stage.strip() != sha256(self.bundle.files[S + "/manifest"]).encode()
             display_restart = display and ((previous_module is not None and not same_module) or changed_stage)
             self.stop(retire_display=not same_module)
+            self.cleanup_staging()
             for path, value in self.bundle.files.items():
                 self.camera.atomic(path, value)
             for name, value in settings.camera_files().items():
@@ -337,6 +346,7 @@ class Installer:
         self.camera.atomic(PENDING, encoded({"format": 1, "operation": "restore"}))
         self.camera.sync()
         self.stop()
+        self.cleanup_staging()
         # Restore previous loader last; keep changes by other installers intact.
         old_preload = values.pop(PRELOAD)
         for path, value in values.items():
@@ -363,6 +373,7 @@ class Installer:
         self.prepare_directories()
         self.snapshot("uninstall")
         self.stop()
+        self.cleanup_staging()
         for path in set(installed['files']) | {CONFIG, PASSWORD, META, ENABLE, DISPLAY_ENABLE, DIAG_ENABLE, DIAG_TOKEN} | DIAG_FILES:
             self.camera.remove(path)
         self.camera.sync()

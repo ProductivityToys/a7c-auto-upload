@@ -328,26 +328,58 @@ class SonyUsb:
         begin = "__A7C_BEGIN_" + nonce
         wire = (f"printf '\\n%s%s\\n' '__A7C_BEGIN_' '{nonce}'; ({command}); "
                 f"r=$?; printf '\\n%s%s:%s\\n' '__A7C_END_' '{nonce}' \"$r\"\n")
-        self.dev.writeTerminal(wire.encode())
         buffer = b""
-        pattern = re.compile(rb"(?:^|\n)" + marker.encode() + rb":(\d+)\r?\n")
+        if len(wire.encode()) > 800:
+            # Stay below BusyBox's interactive input-line limits. Assemble in
+            # a private shell variable using bounded quoted lines,
+            # then evaluate once in the same subshell as the short-command path.
+            # This needs no temporary file and never retries a mutation.
+            variable = '_a7c_cmd_' + nonce
+            lines = [variable + "=''\n"]
+            for offset in range(0, len(command), 128):
+                chunk = shlex.quote(command[offset:offset + 128])
+                lines.append(f'{variable}="${variable}"{chunk}\n')
+            lines.append(f"printf '\\n%s%s\\n' '__A7C_BEGIN_' '{nonce}'; "
+                         f'(eval "${variable}"); r=$?; unset {variable}; '
+                         f"printf '\\n%s%s:%s\\n' '__A7C_END_' '{nonce}' \"$r\"\n")
+            for line in lines:
+                self.dev.writeTerminal(line.encode())
+                # Drain the echoed input between lines. Sending a whole script
+                # without reading can overflow the camera's terminal queues,
+                # dropping bytes even when every individual line is short.
+                drain_deadline = time.monotonic() + 2
+                while time.monotonic() < drain_deadline:
+                    data = self.dev.readTerminal()
+                    if not data:
+                        break
+                    buffer += data
+                    if len(buffer) > 256 * 1024:
+                        raise InstallerError("USB 命令输出超过预期；已停止。")
+        else:
+            self.dev.writeTerminal(wire.encode())
+        # printk may put a fragment immediately before a marker. The random
+        # nonce still identifies it uniquely; the echoed command only contains
+        # its two separate quoted halves, never the complete marker.
+        pattern = re.compile(marker.encode() + rb":(\d+)\r?\n")
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
-            buffer += self.dev.readTerminal()
             if len(buffer) > 256 * 1024:
                 raise InstallerError("USB 命令输出超过预期；已停止。")
             match = pattern.search(buffer)
             if match:
-                started = re.search(rb"(?:^|\n)" + begin.encode() + rb"\r?\n", buffer[:match.start()])
+                started = re.search(begin.encode() + rb"\r?\n", buffer[:match.start()])
                 if not started:
                     raise InstallerError("USB 命令没有有效的开始标记。")
                 output = buffer[started.end():match.start()].decode(errors="replace").replace("\r", "")
-                # Linux console messages may arrive asynchronously on this shell.
+                # Linux console messages may arrive asynchronously on this
+                # shell, including an unfinished timestamp just before our
+                # completion marker. It is not part of the command's output.
                 output = "\n".join(line for line in output.splitlines()
-                                   if not re.match(r"^\[\s*\d+\.\d+\]", line)).strip()
+                                   if not re.match(r"^\[\s*\d+(?:\.\d*)?(?:\]|$)", line)).strip()
                 if int(match[1]) != 0:
                     raise InstallerError("机内文件/运行状态操作未完成；未继续下一阶段。")
                 return output
+            buffer += self.dev.readTerminal()
         # Name the timed-out step for diagnosis: a short fixed-length digest of
         # the command (never its text, which may carry paths or arguments).
         self.log("USB 命令超时：步骤 " + hashlib.sha256(command.encode()).hexdigest()[:8] + " · " + str(timeout) + " 秒")
@@ -355,9 +387,12 @@ class SonyUsb:
 
     def exists(self, path):
         out = self.command(f"if [ -e {shlex.quote(path)} ] || [ -L {shlex.quote(path)} ]; then echo EXISTS; else echo ABSENT; fi")
-        if out == "EXISTS":
+        # Keep the explicit answer even when asynchronous console fragments
+        # remain between the command's nonce-delimited markers.
+        answers = [line for line in out.splitlines() if line in ("EXISTS", "ABSENT")]
+        if answers == ["EXISTS"]:
             return True
-        if out == "ABSENT":
+        if answers == ["ABSENT"]:
             return False
         raise InstallerError("文件存在性查询未返回明确结果。")
 
@@ -511,6 +546,13 @@ class SonyUsb:
         if self.read(temporary) != data:
             raise InstallerError("机内暂存文件读回不符，尚未发布。")
         self.command(f"/bin/busybox chmod {mode:o} {shlex.quote(temporary)} && /bin/busybox mv {shlex.quote(temporary)} {shlex.quote(path)}")
+
+    def cleanup_staging(self, paths):
+        # One bounded USB command; no globs or recursive deletion. Called only
+        # after the worker/display have quiesced in an installer transaction.
+        if paths:
+            self.command("/bin/busybox rm -f -- " +
+                         " ".join(shlex.quote(path + ".installer-next") for path in paths))
 
     def sync(self):
         self.command("/bin/busybox sync", timeout=30)

@@ -1,9 +1,9 @@
-# A7C Installer 0.1.0-preview.28
+# A7C Installer 0.1.0-preview.29
 
 相机载荷为 `0.4.2-photos.15-preview`，已验证第一代 **ILCE-7C / 固件 2.00**。
 桌面 App 和脚本共用安装核心，不升级固件，不安装 NAS 专用接收器，不处理 Photos 索引。
 
-本批仅修复安装器健康查询的超时退出、补齐下载包的 MIT 许可和公开仓库的测试资料，并明确联网设置。相机载荷、显示模块与 Windows 驱动实现保持不变；本轮不操作相机，沿用已有 2.00 实机验收。三个平台包统一为 preview.28，测试与成品检查范围见 `validation.json` 和发行目录的 `distributions.json`。
+本批修复安装／卸载／恢复时的暂存文件残留、内核日志干扰 USB 回复，以及长命令输入丢字节。相机载荷、显示模块与 Windows 驱动实现保持不变。打包前已完成 2.00 实机卸载、重复卸载、中断恢复、34 项文件一致性和完整断电自启验收；本次重建与发布不再操作相机。三个平台包统一为 preview.29，详见[补测记录](https://github.com/ProductivityToys/a7c-auto-upload/blob/main/docs/installer-testing.md)、`validation.json` 和 `distributions.json`。
 
 本版新增 JPEG／ARW 图片上传开关、拍照待机支持和按时间排序的混合媒体队列。CLI 可用 `install --reuse --photos --yes` 开启，`--no-photos` 关闭；更新时默认沿用已有选择。
 

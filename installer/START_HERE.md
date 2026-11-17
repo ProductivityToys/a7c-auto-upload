@@ -4,7 +4,7 @@
 已验证 **第一代 ILCE-7C、机身固件 2.00**；其他固件未测试，能否安装以安装器检测结果为准。A7C II、A7CR 不在本项目适配范围。
 安装与卸载步骤见本文，回退方法见[恢复与卸载](RECOVERY.md)。
 
-本说明对应 `0.1.0-preview.28` / 相机载荷 `0.4.2-photos.15-preview`。
+本说明对应 `0.1.0-preview.29` / 相机载荷 `0.4.2-photos.15-preview`。
 新增可选 JPEG／ARW 图片上传；默认只上传视频，更新时保留已有图片开关。验收范围见同包 `validation.json`。
 
 先点「连接相机」，macOS 按系统提示授权后自动继续。连接成功后填写 FTP 并安装；
@@ -34,12 +34,12 @@ Windows：完整解压后直接双击根目录「A7C 自动上传.exe」，保�
 
 ```sh
 # macOS
-shasum -a 256 a7c-installer-0.1.0-preview.28-macos-arm64.dmg
+shasum -a 256 a7c-installer-0.1.0-preview.29-macos-arm64.dmg
 ```
 
 ```powershell
 # Windows PowerShell
-Get-FileHash .\a7c-installer-0.1.0-preview.28-windows-x64.zip -Algorithm SHA256
+Get-FileHash .\a7c-installer-0.1.0-preview.29-windows-x64.zip -Algorithm SHA256
 ```
 
 结果应与发送者通过可信渠道提供的 `SHA256SUMS` 对应行相同。摘要能检查文件变化，不替代发布者签名。

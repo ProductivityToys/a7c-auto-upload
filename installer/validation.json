@@ -1,30 +1,30 @@
 {
-  "installer_version": "0.1.0-preview.28",
-  "package_revision": "preview.28",
+  "installer_version": "0.1.0-preview.29",
+  "package_revision": "preview.29",
   "payload_version": "0.4.2-photos.15-preview",
   "payload_sha256": "55da88b9f568d0d498a9f6141d0241844b19f7b878624b0424e9fbc64a51f80c",
   "payload_files": 22,
   "channel": "preview",
   "supported_model": "ILCE-7C",
   "supported_firmware": "2.00",
-  "build_date": "2026-11-14",
+  "build_date": "2026-11-17",
   "unit_tests": {
-    "macOS": 117,
-    "Windows": 113
+    "macOS": 134,
+    "Windows": 124
   },
   "macOS": {
     "arch": "arm64",
     "frozen_app_selfcheck": "Final frozen App, signature and embedded-file checks recorded in distributions.json",
     "signature": "ad-hoc; not notarized",
     "release_artifacts": "See distributions.json for final archive/entry checks; validation embedded before packaging.",
-    "source_tests": "117 passed, including real isolated health-shell deadline and release-license checks; no camera I/O"
+    "source_tests": "134 passed, no skips; includes 460 mutation-boundary subcases and real isolated staging/shell integration"
   },
   "Windows": {
     "arch": "x64",
     "status": "Installer-only update; existing camera and driver lifecycle acceptance retained. Current source tests and frozen checks are recorded in distributions.json.",
     "os": "11 build 26200",
     "signature": "unsigned preview",
-    "source_tests": "117 run, 113 passed, 4 POSIX cases skipped; source tests and frozen checks on Windows 11",
+    "source_tests": "134 run, 124 passed, 10 POSIX cases skipped; executed on Windows 11",
     "frozen_app_selfcheck": "Final frozen EXE and embedded-file checks recorded in distributions.json"
   },
   "native_display": "ABI21 module and the display package are unchanged from the accepted .13 release; native progress bar and idle indicator restored after the tested RAW+JPEG uploads.",
@@ -34,20 +34,20 @@
     "debug_listener_in_payload": false
   },
   "changes": [
-    "Bound the read-only USB display health probe: kill on deadline without an unbounded wait, and avoid launching another probe while the prior one is pending",
-    "Include the project MIT license in macOS, Windows and scripts packages, expose it in App help, and reject packaging if a desktop build omits it",
-    "Make FTP tests self-contained with local fixtures and a test-only legacy XML reference; remove dependence on the absent historical NAS receiver",
-    "Clarify tested camera networking choices in Chinese and English quick starts and the AI copy block: stock FTP on, or stock FTP off with PC Remote Wi-Fi Access Point on",
-    "The 22 camera service files, native display and Windows drivers are byte-for-byte unchanged from preview.27; no camera or driver actions in this release"
+    "Remove installer-owned .installer-next temporaries after quiescing services during install, restore and uninstall; preserve rollback contents, foreign files and media",
+    "Accept nonce-delimited USB completion markers amid asynchronous kernel console text; accept only one unambiguous file-existence answer",
+    "Assemble long commands with safely quoted short lines and drain echoes between writes to avoid dropped terminal input; execute once without automatic mutation replay",
+    "Add lifecycle fault sweeps across 460 disconnect boundaries, real temporary-file staging and shell integration cases, and terminal interleaving regressions",
+    "Camera payload, 22 service files, native display and Windows driver implementation are byte-for-byte unchanged from preview.28; no camera or driver operations during rebuilding/publication"
   ],
-  "sharing_status": "Private GitHub prerelease; macOS arm64, Windows x64 and CLI scripts. Tested ILCE-7C2.00; other firmware untested.",
+  "sharing_status": "Public GitHub prerelease; macOS arm64, Windows x64 and CLI scripts. Tested ILCE-7C 2.00; other firmware untested.",
   "worker_tests": {
     "macOS": 162,
     "result": "Self-contained public checkout: host C/shell/FTP integration; no historical NAS directory or camera I/O"
   },
   "native_start_tests": 1,
   "unit_test_skips": {
-    "Windows": "4 POSIX cases executed on macOS: three health-shell integration cases and one launcher case; 117 run, 113 passed, 4 skipped"
+    "Windows": "10 POSIX cases executed on macOS: six staging/shell cases, three health-shell cases and one launcher case; 134 run, 124 passed, 10 skipped"
   },
   "script_acceptance": {
     "entrypoints": "macOS .command --help / menu start-exit and Windows CMD menu start-exit passed using prepared runtime and existing administrator session",
@@ -55,7 +55,7 @@
     "camera_uninstall_via_cli": "macOS prior uninstall passed; Windows .21:27 managed paths absent, owned preload absent, private backup retained; all3 own OEM driver packages removed and original driver restored",
     "shared_core_tests": "host unit/integration tests only; not equivalent to CLI-on-camera end-to-end acceptance",
     "camera_acceptance_path": "Actual macOS and Windows CLI lifecycle tested; Windows C0258 new video20978709 bytes, SD UF786A6A.RCP and display cleanup0 accepted. Final frozen Windows .22 GUI connect, installed recognition, inline FTP result and disconnect passed; GUI install/uninstall buttons not separately claimed.",
-    "next_device_acceptance": "No camera actions in preview.28; host-side health deadline tested with real isolated stand-ins. Existing device acceptance retained."
+    "next_device_acceptance": "Before release preparation: actual ILCE-7C 2.00 USB CLI dispatch verified uninstall, repeated-uninstall refusal, interrupted recovery and 34 byte-identical restored paths; full power cycle then automatic uploader/native-display/paired-diagnostics startup and healthy NAS FTP verified over Wi-Fi, without manual START. No further camera or driver operations during packaging/publication."
   },
   "discovery_tests": 15,
   "previous_camera_runtime_acceptance": {
@@ -77,6 +77,26 @@
     "usb_install_health": "File installation verified; USB health query timed out. Subsequent Wi-Fi runtime and actual uploads verified the service independently; no repeated installation",
     "body_hash_or_readback": false,
     "extra_restart_or_sleep_tests": false,
-    "scope": "Carried forward from preview.27 (.15 payload is unchanged); no new device acceptance claimed for preview.28"
+    "scope": "Media-transfer acceptance carried forward from preview.27; the unchanged .15 payload has new installer recovery and cold-boot acceptance recorded separately above. No new media-transfer acceptance in preview.29."
+  },
+  "installer_lifecycle_acceptance": {
+    "date": "2026-11-17",
+    "firmware": "ILCE-7C 2.00",
+    "managed_paths_restored_exactly": 34,
+    "disconnect_subcases": {
+      "fresh_install": 82,
+      "configuration_update": 136,
+      "uninstall": 156,
+      "restore": 86
+    },
+    "device_path": "Real USB connection shared by CLI dispatch; no packaged GUI click acceptance claimed in this round",
+    "uninstall": "Owned programs, configuration, pairing and known staging removed; foreign preload preserved; rollback backup retained",
+    "repeated_uninstall": "Refused without modifying inspected files",
+    "recovery": "Interrupted operation and normal uninstall both restored; all 34 paths byte-identical to original private snapshot",
+    "cold_boot": "User performed complete power removal; uploader, native display and paired diagnostics started automatically; NAS FTP healthy and idle indicator visible; no manual START",
+    "media_transfer_this_round": false,
+    "new_windows_device_acceptance": false,
+    "sleep_test": false,
+    "report": "../docs/installer-testing.md"
   }
 }
