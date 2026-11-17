@@ -1,24 +1,26 @@
 {
-  "package_revision": "preview.28",
-  "installer_version": "0.1.0-preview.28",
+  "package_revision": "preview.29",
+  "installer_version": "0.1.0-preview.29",
+  "build_date": "2026-11-17",
   "payload_version": "0.4.2-photos.15-preview",
   "payload_sha256": "55da88b9f568d0d498a9f6141d0241844b19f7b878624b0424e9fbc64a51f80c",
-  "artifact_directory": "/Volumes/ExtWorkspace/a7c-ftp-research/releases/installer-0.1.0-preview.28",
-  "release_url": "https://github.com/ProductivityToys/a7c-auto-upload/releases/tag/v0.1.0-preview.28",
-  "private": true,
+  "source_commit": "b65e413ffe406798b0b548da5afef04c90a0ac35",
+  "source_archive_sha256": "0baca050b4950bb34c72ae01cb4d458cd612b011d2d1f45e473eb05e59feb2bb",
+  "release_url": "https://github.com/ProductivityToys/a7c-auto-upload/releases/tag/v0.1.0-preview.29",
+  "private": false,
   "prerelease": true,
   "assets": {
-    "a7c-installer-0.1.0-preview.28-scripts.zip": {
-      "bytes": 3939222,
-      "sha256": "ecf4c60df62a530c50a6f75ffa29aa311c6152724ae354af517bcbc79a78d7f5"
+    "a7c-installer-0.1.0-preview.29-scripts.zip": {
+      "bytes": 3940851,
+      "sha256": "3e7e1cd1aff8fd3939cb31ef4ec6453207a9c7f27315988e48032a703b5a7bd0"
     },
-    "a7c-installer-0.1.0-preview.28-macos-arm64.dmg": {
-      "bytes": 40456396,
-      "sha256": "102fe084dde0a5c5209e25ae56840551a685f6f32253ec32c543a0ff6a388794"
+    "a7c-installer-0.1.0-preview.29-macos-arm64.dmg": {
+      "bytes": 40461973,
+      "sha256": "37d996a0f707a5cf9b2e9d08a58040d0117528a5ba4adae1e7698e202721b5dd"
     },
-    "a7c-installer-0.1.0-preview.28-windows-x64.zip": {
-      "bytes": 46887519,
-      "sha256": "411af6c429b2e49b6caca400bf13c1e303a725f1297df27d862c0959a73610c8"
+    "a7c-installer-0.1.0-preview.29-windows-x64.zip": {
+      "bytes": 46888234,
+      "sha256": "b2139f0f31ce2941d66e33a674da17469c94a67afcb0ff22fe2a22104817425c"
     }
   },
   "verification": {
@@ -27,7 +29,7 @@
       "dmg_readonly_mount": true,
       "macos_signature": true,
       "selfcheck": {
-        "installer_version": "0.1.0-preview.28",
+        "installer_version": "0.1.0-preview.29",
         "platform": "macOS-27.0.1-arm64-arm-64bit-Mach-O",
         "payload_version": "0.4.2-photos.15-preview",
         "payload_files": 22,
@@ -41,13 +43,20 @@
       },
       "all_app_files_and_links_match": 430,
       "project_mit_in_app": true,
-      "scope": "Read-only mount using existing noninteractive sudo authorization; no camera action",
-      "source_tests": "117 passed",
-      "all_payloads_match": true
+      "source_tests": "134 passed, no skips",
+      "frozen_core": {
+        "compiled_modules_match_source": [
+          "a7c_installer",
+          "a7c_installer.operations",
+          "a7c_installer.transport.sony_usb",
+          "a7c_installer.gui"
+        ],
+        "scope": "offline archive inspection; no imports from the frozen application and no USB access"
+      }
     },
     "Windows": {
       "frozen_exe": {
-        "installer_version": "0.1.0-preview.28",
+        "installer_version": "0.1.0-preview.29",
         "platform": "Windows-11-10.0.26200-SP0",
         "payload_version": "0.4.2-photos.15-preview",
         "payload_files": 22,
@@ -73,36 +82,40 @@
       "cmd_help": true,
       "cmd_menu_start_exit": true,
       "scope": "Final Chinese EXE and CMD paths; shared prepared runtime and existing elevated SSH session. No camera, driver changes or new UAC flow.",
-      "source_tests": "117 run, 113 passed, 4 POSIX skipped",
-      "build_archive_sha256": "159ab7dc31e3888b5e176bf2a50ddeed6a68f089e612c5a5a8922a3b529c2cb5",
-      "download_sha256_match": true
+      "source_tests": "134 run, 124 passed, 10 POSIX cases skipped; all skipped cases covered on macOS",
+      "frozen_core": {
+        "compiled_modules_match_source": [
+          "a7c_installer",
+          "a7c_installer.operations",
+          "a7c_installer.transport.sony_usb",
+          "a7c_installer.gui"
+        ],
+        "scope": "offline archive inspection; no imports from the frozen application and no USB access"
+      },
+      "build_archive_sha256": "1223ab0476a4fb11817c574556ec5d7762ddd2d438b8f1e829aa2d378e3119a1"
     },
     "scripts": {
       "zip_crc": true,
-      "payloads_match": true,
-      "project_license_in_both_zips": true,
+      "source_modules_match": true,
       "command_help": true,
       "menu_start_exit": true,
-      "menu_scope": "nonprivileged menu with prepared runtime; no camera action or sudo prompt"
-    },
-    "ftp_tests": {
-      "run": 162,
-      "status": "passed in self-contained distribution checkout"
-    },
-    "discovery_tests": {
-      "run": 15,
-      "status": "passed"
+      "scope": "Prepared runtime and existing sudo authorization; no USB action"
     },
     "release_payload": {
-      "service_files": 22,
-      "wifi_diag_present": false,
-      "shared_bytes_across_three_packages": true,
-      "unchanged_from_preview27": true
+      "files": 22,
+      "all_three_packages_byte_identical": true,
+      "unchanged_from_preview28": true,
+      "wifi_diag_present": false
     },
-    "project_license": {
-      "status": "MIT included and compared to root LICENSE in all three packages",
-      "desktop_help": "Project license readable in both frozen Apps"
+    "project_license": "Root MIT included and compared in both frozen Apps, desktop help and script ZIP",
+    "installer_lifecycle": {
+      "mutation_disconnect_subcases": 460,
+      "managed_paths_restored_exactly": 34,
+      "device": "ILCE-7C 2.00; real USB uninstall, repeated-uninstall refusal and restore verified before release preparation",
+      "cold_boot": "User removed all power; uploader, native display and paired diagnostics started automatically; NAS FTP healthy and service indicator visible; no manual START",
+      "packaged_gui_click_acceptance_this_round": false,
+      "fresh_media_transfer_this_round": false
     },
-    "camera_scope": "No camera or driver actions during preview.28; existing .15 runtime acceptance retained."
+    "camera_scope": "No camera, USB-device enumeration, Wi-Fi diagnostics or driver changes during rebuilding/publication. Frozen self-checks use --offline."
   }
 }
